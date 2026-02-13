@@ -3819,11 +3819,11 @@ public function dashboard_excel()
 				'ac_wash_15' => postArr('ac_wash_15', $i),
 
 				//FORMALDEHYDE
-				'mass_of'             => postArr('mass_of_hidden', $i),
-				'range_graph_1'       => postArr('range_graph_1_hidden', $i),
-				'range_graph_2'       => postArr('range_graph_2_hidden', $i),
-				'result_formaldehyde' => postArr('result_formaldehyde_hidden', $i),
-				'status_formaldehyde' => postArr('status_formaldehyde', $i),
+				'mass_of'       => postArr('mass_of', $i),
+				'range_graph_1' => postArr('range_graph_1', $i),
+				'range_graph_2' => postArr('range_graph_2', $i),
+				//'result_formaldehyde' => postArr('result_formaldehyde_hidden', $i),
+				//'status_formaldehyde' => postArr('status_formaldehyde', $i),
 
 				//SOCK
 				'nahm_sock'			  => postArr('nahm_sock', $i),

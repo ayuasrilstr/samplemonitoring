@@ -1132,8 +1132,8 @@
                                     data-test-level="<?= htmlspecialchars($r['test_level']) ?>"
                                     data-composition="<?= htmlspecialchars($r['composition']) ?>"
                                     data-result-type="<?= htmlspecialchars(strtolower($r['result_type'])) ?>"
-                                    data-value-from="<?= htmlspecialchars($r['value_from']) ?>"
-                                    data-value-to="<?= htmlspecialchars($r['value_to']) ?>"
+                                    data-value-from="<?= ($r['value_from'] !== '-' ? htmlspecialchars($r['value_from']) : '') ?>"
+                                    data-value-to="<?= ($r['value_to'] !== '-' ? htmlspecialchars($r['value_to']) : '') ?>"
                                 >
                                     <!-- NO -->
                                     <td><?= $no++ ?></td>
@@ -1175,6 +1175,9 @@
                                     <input type="hidden" name="result[]" class="result-hidden">
                                     <input type="hidden" name="comment[]" class="comment-hidden">
                                     <input type="hidden" name="status[]" class="status-hidden">
+                                    <input type="hidden" name="mass_of[]" class="mass-of-hidden">
+                                    <input type="hidden" name="range_graph_1[]" class="range-graph-1-hidden">
+                                    <input type="hidden" name="range_graph_2[]" class="range-graph-2-hidden">
 
                                 </tr>
                                 <?php endforeach; ?>

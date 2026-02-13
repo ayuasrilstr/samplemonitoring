@@ -1034,26 +1034,59 @@ const barChart = new Chart(ctxBar, {
             })
         })
 
-        function parseInterval(val) {
-          if (!val) return null;
+function parseInterval(val) {
+    if (!val) return null;
 
-          val = val.toString().trim().replace("%", "");
+    val = val.toString().trim();
 
-          if (val.startsWith("<=")) return { min: -Infinity, max: parseFloat(val.slice(2)) };
-          if (val.startsWith("<"))  return { min: -Infinity, max: parseFloat(val.slice(1)) };
-          if (val.startsWith(">=")) return { min: parseFloat(val.slice(2)), max: Infinity };
-          if (val.startsWith(">"))  return { min: parseFloat(val.slice(1)), max: Infinity };
+    // 🔥 Normalisasi unicode pembanding
+    val = val
+        .replace(/\u2264/g, "<=") // ≤
+        .replace(/\u2265/g, ">=") // ≥
+        .replace(/\u00A0/g, " "); // non-breaking space
 
-          if (/^-?\d+(\.\d+)?\s*-\s*-?\d+(\.\d+)?$/.test(val)) {
-              let [a, b] = val.split("-").map(v => parseFloat(v));
-              return { min: Math.min(a, b), max: Math.max(a, b) };
-          }
+    // 🔥 Ambil semua angka dengan cara lebih aman
+    const numbers = val.replace(/[^\d.\-]/g, ' ')
+                       .trim()
+                       .split(/\s+/)
+                       .map(n => parseFloat(n))
+                       .filter(n => !isNaN(n));
 
-          let num = parseFloat(val);
-          if (!isNaN(num)) return { min: num, max: num };
+    if (numbers.length === 0) return null;
 
-          return null;
-      }
+    // Range (10 - 20)
+    if (numbers.length >= 2) {
+        return {
+            min: Math.min(numbers[0], numbers[1]),
+            max: Math.max(numbers[0], numbers[1])
+        };
+    }
+
+    const num = numbers[0];
+
+    // Cek operator
+    if (val.includes("<=")) {
+        return { min: -Infinity, max: num };
+    }
+
+    if (val.includes(">=")) {
+        return { min: num, max: Infinity };
+    }
+
+    if (val.includes("<")) {
+        return { min: -Infinity, max: num };
+    }
+
+    if (val.includes(">")) {
+        return { min: num, max: Infinity };
+    }
+
+    return { min: num, max: num };
+}
+
+
+
+
 
 
       function renderRow(tr) {
@@ -1075,58 +1108,99 @@ const barChart = new Chart(ctxBar, {
         statusCell.empty();
 
         
-        // ===== NUMBER =====
-      if (type === 'number') {
+        // ===== NUMBER + FORMALDEHYDE =====
+  if (type === 'number' || type === 'formaldehyde') {
 
-          // render input
-          resultCell.html(`<input type="text" class="form-control result-input">`);
+    resultCell.html(`
+        <div class="number-wrapper">
+            <input type="text" name="result[]" class="form-control result-input mb-1" placeholder="Result">
 
-        resultCell.find('.result-input').on('input', function () {
+            ${type === 'formaldehyde' ? `
+                <input type="text" name="mass_of[]" class="form-control mb-1 mass-of" placeholder="Mass of specimen">
+                <input type="text" name="range_graph_1[]" class="form-control mb-1 range-graph-1" placeholder="CONCENTRATION 15-600 PPM">
+                <input type="text" name="range_graph_2[]" class="form-control range-graph-2" placeholder="ABS 0.026 - 0.804">
+            ` : ''}
+        </div>
+    `);
 
-          const row = $(this).closest('tr');
+    $(document).on('input', '.mass-of, .range-graph-1, .range-graph-2', function(){
+        const row = $(this).closest('tr');
+        row.find('.mass-of-hidden').val(row.find('.mass-of').val());
+        row.find('.range-graph-1-hidden').val(row.find('.range-graph-1').val());
+        row.find('.range-graph-2-hidden').val(row.find('.range-graph-2').val());
+    });
 
-          const fromVal   = row.data('value-from');
-          const toVal     = row.data('value-to');
-          const resultVal = $(this).val().trim();
+    resultCell.find('input').on('input', function () {
 
-          // ===== KALAU KOSONG =====
-          if (resultVal === '') {
-              resultHidden.val('');
-              statusHidden.val('');
-              statusCell.text('').css('color', '');
-              return; // STOP DI SINI
-          }
+        const row = $(this).closest('tr');
 
-          const from   = parseInterval(fromVal);
-          const to     = parseInterval(toVal);
-          const result = parseInterval(resultVal);
+        const fromVal = (row.attr('data-value-from') || '').trim();
+        const toVal   = (row.attr('data-value-to') || '').trim();
+        const resultVal = row.find('.result-input').val().trim();
 
-          resultHidden.val(resultVal);
+      
+        if (resultVal === '') {
+            statusHidden.val('');
+            statusCell.text('').css('color','');
+            return;
+        }
 
-          let status = 'fail';
+        const result = parseFloat(resultVal);
+        if (isNaN(result)) {
+            statusHidden.val('');
+            statusCell.text('').css('color','');
+            return;
+        }
 
-          if (from && to && result) {
-              const lowerLimit = from.max;
-              const upperLimit = to.max;
+        let pass = true;
 
-              if (result.max < lowerLimit) {
-                  status = 'fail';
-              }
-              else if (result.min > upperLimit) {
-                  status = 'fail';
-              }
-              else {
-                  status = 'pass';
-              }
-          }
+        // Cek dari/to value (sama seperti sebelumnya)
+        if (!toVal) {
+            if (fromVal.includes('≤')) {
+                const limit = parseFloat(fromVal.replace(/[^\d.]/g,''));
+                pass = result <= limit;
+            } else if (fromVal.includes('≥')) {
+                const limit = parseFloat(fromVal.replace(/[^\d.]/g,''));
+                pass = result >= limit;
+            } else if (fromVal.includes('<')) {
+                const limit = parseFloat(fromVal.replace(/[^\d.]/g,''));
+                pass = result < limit;
+            } else if (fromVal.includes('>')) {
+                const limit = parseFloat(fromVal.replace(/[^\d.]/g,''));
+                pass = result > limit;
+            } else if (fromVal.includes('-')) {
+                const nums = fromVal.match(/\d+(\.\d+)?/g);
+                if (nums && nums.length === 2) {
+                    const min = parseFloat(nums[0]);
+                    const max = parseFloat(nums[1]);
+                    pass = result >= min && result <= max;
+                }
+            } else if (fromVal !== '') {
+                const limit = parseFloat(fromVal);
+                pass = result === limit;
+            }
+        } else {
+            const min = parseFloat(fromVal.replace(/[^\d.]/g,''));
+            const max = parseFloat(toVal.replace(/[^\d.]/g,''));
+            if (!isNaN(min) && !isNaN(max)) {
+                pass = result >= min && result <= max;
+            }
+        }
 
-          statusHidden.val(status);
-          statusCell
-              .text(status.toUpperCase())
-              .css('color', status === 'pass' ? 'green' : 'red');
-      });
+        const status = pass ? 'pass' : 'fail';
+        statusHidden.val(status);
+        statusCell
+            .text(status.toUpperCase())
+            .css('color', status === 'pass' ? 'green' : 'red');
 
+        // ✅ Untuk Formaldehyde, field tambahan otomatis sudah pakai array
+        // PHP akan menerima:
+        // $_POST['mass_of'], $_POST['range_graph_1'], $_POST['range_graph_2']
+        // jadi tidak perlu JSON atau resultHidden.val lagi
+    });
 }
+
+
 
         // ===== BOOLEAN =====
         if (type === 'boolean') {
