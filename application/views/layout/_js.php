@@ -32,7 +32,6 @@
 
 <!-- DataTables -->
 <script src="<?php echo base_url();?>assets/plugins/datatables/jquery.dataTables.min.js"></script>
-<!--script src="<php echo base_url();?>assets/plugins/datatables-responsive/js/dataTables.responsive.min.js"></script-->
 <script src="<?php echo base_url();?>assets/plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
 <script src="<?php echo base_url();?>assets/plugins/datatables-autofill/js/dataTables.autoFill.min.js"></script>
 <script src="<?php echo base_url();?>assets/plugins/datatables-select/js/dataTables.select.min.js"></script>
@@ -60,71 +59,298 @@
 <script src="<?php echo base_url('assets');?>/plugins/dropzone/min/dropzone.min.js"></script>
 
 <script src="<?php echo base_url('assets');?>/html5-qrcode-master/minified/html5-qrcode.min.js"></script>
+<!-- Penambahan Js agar satuan ikut muncul (ADD & EDIT PENERIMAAN) -->
 <script>
-  $('#modalPilihTest').on('show.bs.modal', function (event) {
-    const button = $(event.relatedTarget);
+ const inputs = [
+    { id: "initial_width", satuan: "inches" },
+    { id: "request_width", satuan: "inches" },
+    { id: "finished_width", satuan: "inches" },
+    { id: "request_fabric", satuan: "gsm" },
+    { id: "finish_fabric", satuan: "gsm" }
+];
 
-    const id_penerimaan = button.data('id_penerimaan');
-    const id_kualitas   = button.data('id_kualitas');
-    const report_no     = button.data('report_no');
+inputs.forEach(({ id, satuan }) => {
+    const input = document.getElementById(id);
+    if (!input) return;
 
-    console.log('OPEN MODAL:', {
-      id_penerimaan,
-      id_kualitas,
-      report_no
+    // default value
+    if (!input.value) {
+        input.value = `0 ${satuan}`;
+    }
+
+    input.addEventListener("input", () => {
+        let caretPos = input.selectionStart;
+        let angka = input.value.replace(/\D.*$/, "");
+
+        if (angka.length > 1 && angka.startsWith("0")) {
+            angka = angka.replace(/^0+/, "");
+            caretPos = Math.max(caretPos - 1, 0);
+        }
+
+        setTimeout(() => {
+            input.value = (angka === "" ? "" : angka) + " " + satuan;
+            const pos = Math.min(caretPos, angka.length);
+            input.setSelectionRange(pos, pos);
+        }, 0);
     });
 
-    $('#id_penerimaan').val(id_penerimaan);
-    $('#id_kualitas').val(id_kualitas);
-    $('#report_no').val(report_no);
+    input.addEventListener("focus", () => {
+        setTimeout(() => {
+            const angkaLength = input.value.split(" ")[0].length;
+            input.setSelectionRange(angkaLength, angkaLength);
+        }, 0);
+    });
 
-    $('#searchTest').val('');
-    $('.dropdown-toggle').text('Pilih Test Required');
+    input.addEventListener("blur", () => {
+        let angka = input.value.replace(/\D.*$/, "");
+        if (angka === "") angka = "0";
+        input.value = angka + " " + satuan;
+    });
+});
 
-    loadTestRequired(id_penerimaan);
-  });
+</script>
+<script>
+  // SELECT ALL
+// SELECT ALL (semua dropdown)
+$(document).on('click', '.select-all', function (e) {
+    e.preventDefault();
+    let target = $(this).data('target');
+    $(`.filter-${target}`).prop('checked', true).trigger('change');
+});
 
+// CLEAR ALL (semua dropdown)
+$(document).on('click', '.clear-all', function (e) {
+    e.preventDefault();
+    let target = $(this).data('target');
+    $(`.filter-${target}`).prop('checked', false).trigger('change');
+});
+
+
+  function getSelectedTypes() {
+    return $('.filter-type:checked').map(function () {
+        return $(this).val();
+    }).get();
+}
+
+function loadMatrixFilters() {
+    const types = getSelectedTypes();
+
+    if (types.length === 0) {
+        $('#filter-method-group, #filter-test-level, #filter-composition').html('');
+        return;
+    }
+
+    $.post(
+        '<?= site_url("c_transaksi/getFilterByType") ?>',
+        { types: types },
+        function (res) {
+            buildDropdown('#filter-method-group', res.method_group, 'method-group');
+            buildDropdown('#filter-test-level', res.test_level, 'test-level');
+            buildDropdown('#filter-composition', res.composition, 'composition');
+        },
+        'json'
+    );
+}
+
+
+function buildDropdown(selector, values, className) {
+    let html = '';
+    values.forEach(v => {
+        html += `
+            <div class="form-check">
+                <input class="form-check-input ${className}"
+                    type="checkbox"
+                    value="${v}"
+                    checked>
+                <label class="form-check-label">${v}</label>
+            </div>`;
+    });
+    $(selector).html(html);
+}
+
+function rebuildFilters() {
+
+    let activeTypes = $('.filter-type:checked').map(function () {
+        return this.value;
+    }).get();
+
+    let methodGroups = new Set();
+    let testLevels   = new Set();
+    let compositions = new Set();
+
+    $('tr[data-type]').each(function () {
+
+        let tr = $(this);
+        let type = tr.data('type');
+
+        if (!activeTypes.includes(type)) return;
+
+        methodGroups.add(tr.data('method-group'));
+        testLevels.add(tr.data('test-level'));
+        compositions.add(tr.data('composition'));
+    });
+
+    buildDropdown('#filter-method-group', [...methodGroups], 'filter-method-group');
+    buildDropdown('#filter-test-level', [...testLevels], 'filter-test-level');
+    buildDropdown('#filter-composition', [...compositions], 'filter-composition');
+}
+
+function applyFilter() {
+
+    let typeChecked = $('.filter-type:checked').map(function(){
+        return this.value;
+    }).get();
+
+    let mgChecked = $('.filter-method-group:checked').map(function(){
+        return this.value;
+    }).get();
+
+    let lvlChecked = $('.filter-test-level:checked').map(function(){
+        return this.value;
+    }).get();
+
+    let compChecked = $('.filter-composition:checked').map(function(){
+        return this.value;
+    }).get();
+
+    $('tbody.type-group').each(function () {
+
+        let tbody = $(this);
+        let visible = false;
+
+        tbody.find('tr[data-type]').each(function () {
+
+            let tr = $(this);
+
+            let show =
+                typeChecked.includes(tr.data('type')) &&
+                mgChecked.includes(tr.data('method-group')) &&
+                lvlChecked.includes(tr.data('test-level')) &&
+                compChecked.includes(tr.data('composition'));
+
+            tr.toggle(show);
+            if (show) visible = true;
+        });
+
+        tbody.toggle(visible);
+    });
+}
+
+function getChecked(cls) {
+    return $(`.filter-${cls}:checked`).map(function () {
+        return $(this).val();
+    }).get();
+}
+
+$(document).on('change', '.filter-type', function () {
+    rebuildFilters();
+    applyFilter();
+});
+
+$(document).on('change',
+    '.filter-method-group, .filter-test-level, .filter-composition',
+    applyFilter
+);
+
+// INIT
+rebuildFilters();
+applyFilter();
+</script>
+
+<script>
+    function isReportNo(evt) {
+            var charCode = (evt.which) ? evt.which : evt.keyCode;
+            if (charCode === 47) { // '/' = 47
+                alert('Format yang anda masukkan tidak sesuai"/" !');
+                return false;
+            }
+            return true;
+        }
+  document.querySelectorAll('.filter-type').forEach(function(cb){
+
+    cb.addEventListener('change', function(){
+
+        let type = this.value;
+        let rows = document.querySelectorAll('.type-group[data-type="'+type+'"]');
+
+        rows.forEach(function(r){
+            r.style.display = cb.checked ? '' : 'none';
+        });
+
+    });
+
+});
+
+$('#modalPilihTest').on('show.bs.modal', function (event) {
+
+  const button = $(event.relatedTarget);
+
+  const id_penerimaan = button.data('id_penerimaan');
+  const report_no     = button.data('report_no');
+
+  $('#id_penerimaan').val(id_penerimaan);
+  $('#report_no').val(report_no);
+
+  loadTestRequired(id_penerimaan);
+});
 
 function loadTestRequired(id_penerimaan) {
-  $('#list-test-required').empty().html('<small>Loading...</small>');
+
+  $('#list-test-required').html('<small>Loading...</small>');
 
   $.ajax({
     url: "<?= site_url('c_transaksi/get_test_required_dropdown') ?>",
     type: "POST",
     dataType: "json",
     data: { id_penerimaan },
-    success: function (res) {
-      console.log('RES:', res);
-      let html = '';
 
-      if (!res || res.length === 0) {
-        html = '<small class="text-muted">Tidak ada test tersedia</small>';
-      } else {
-        res.forEach((item, i) => {
-          html += `
-            <div class="custom-control custom-checkbox test-item mb-1">
-              <input
-                type="checkbox"
-                class="custom-control-input"
-                name="test_required[]"
-                value="${item.test_required}"
-                id="test_${i}">
-              <label class="custom-control-label" for="test_${i}">
-                ${item.test_required}
-              </label>
-            </div>
-          `;
-        });
-      }
+   success: function (res) {
 
-      $('#list-test-required').html(html);
-    },
-    error: function (xhr) {
-      console.error(xhr.responseText);
-      $('#list-test-required').html(
-        '<small class="text-danger">Gagal memuat data</small>'
-      );
-    }
+  let htmlTest  = '';
+  let htmlColor = '';
+
+  // TEST REQUIRED
+  if (!res.tests || res.tests.length === 0) {
+    htmlTest = '<small class="text-muted">Tidak ada test</small>';
+  } else {
+    res.tests.forEach((test, i) => {
+      htmlTest += `
+        <div class="custom-control custom-checkbox mb-1">
+          <input type="checkbox"
+                 class="custom-control-input"
+                 name="test_required[]"
+                 value="${test}"
+                 id="test_${i}">
+          <label class="custom-control-label" for="test_${i}">
+            ${test}
+          </label>
+        </div>`;
+    });
+  }
+
+  // COLOR
+  if (!res.colors || res.colors.length === 0) {
+    htmlColor = '<small class="text-muted">Tidak ada color</small>';
+  } else {
+    res.colors.forEach((color, i) => {
+      htmlColor += `
+        <div class="custom-control custom-checkbox mb-1">
+          <input type="checkbox"
+                 class="custom-control-input"
+                 name="color[]"
+                 value="${color}"
+                 id="color_${i}">
+          <label class="custom-control-label" for="color_${i}">
+            ${color}
+          </label>
+        </div>`;
+    });
+  }
+
+    $('#list-test-required').html(htmlTest);
+    $('#list-color').html(htmlColor);
+  }
+
   });
 }
 
@@ -453,6 +679,19 @@ const barChart = new Chart(ctxBar, {
   //    "ordering": false
   //  });
   //});
+
+  $(document).ready(function() {
+    if ($('.tableDefault').length) {
+        $('.tableDefault').DataTable({
+            responsive: true,
+            autoWidth: false,
+            lengthChange: true,
+            searching: true,
+            ordering: true,
+            info: true
+        });
+    }
+});
 
     $(function () {
     $("#otherTable").DataTable({
@@ -795,84 +1034,150 @@ const barChart = new Chart(ctxBar, {
             })
         })
 
-    
-        $('#result_type').on('change', function () {
-            let val = $(this).val();
+        function parseInterval(val) {
+          if (!val) return null;
 
-            // ==== RESET SEMUA ====
-            $('#div_statement, #div_statement_status, #div_passfail, #div_passfail_1, #div_status_passfail, #div_comment, #div_value_from, #div_value_to, #div_result, #div_status').hide();
+          val = val.toString().trim().replace("%", "");
 
-            $('.shrinkage, .formaldehyde, .sock').hide().find('input, select, textarea').val('');
+          if (val.startsWith("<=")) return { min: -Infinity, max: parseFloat(val.slice(2)) };
+          if (val.startsWith("<"))  return { min: -Infinity, max: parseFloat(val.slice(1)) };
+          if (val.startsWith(">=")) return { min: parseFloat(val.slice(2)), max: Infinity };
+          if (val.startsWith(">"))  return { min: parseFloat(val.slice(1)), max: Infinity };
 
-            $('input[name="result_row"]').val('').prop('readonly', true);
-            $('input[name="status"]').val('').prop('readonly', true);
-            $('textarea[name="statement"]').val('').prop('readonly', true);
-            $('.status_row').val('');
+          if (/^-?\d+(\.\d+)?\s*-\s*-?\d+(\.\d+)?$/.test(val)) {
+              let [a, b] = val.split("-").map(v => parseFloat(v));
+              return { min: Math.min(a, b), max: Math.max(a, b) };
+          }
 
-            // ==== NUMBER ====
-            if (val === 'number') {
-                $('#div_value_from').show();
-                $('#div_value_to').show();
-                $('#div_result').show();
-                $('#div_status').show();
-                $('input[name="result_row"]').prop('readonly', false).val(0);
-            }
+          let num = parseFloat(val);
+          if (!isNaN(num)) return { min: num, max: num };
 
-            // ==== BOOLEAN ====
-            if (val === 'boolean') {
-                $('#div_passfail').show();
-                $('#div_passfail_1').show();
-                $('#div_status_passfail').show();
-                $('#div_comment').show();
-            }
+          return null;
+      }
 
-            // ==== SOCK ====
-            if (val === 'sock') {
-                $('.sock').show();
-                $('#div_comment').hide();
-                $('#div_value_from').hide();
-                $('#div_value_to').hide();
-            }
 
-            // ==== STATEMENT ====
-            if (val === 'statement') {
-                $('#div_statement').show();
-                $('#div_statement_status').show();
-                $('#div_status_passfail').show();
-                $('textarea[name="statement"]').prop('readonly', false);
-            }
+      function renderRow(tr) {
 
-            // ==== SHRINKAGE ====
-            if (val === 'shrinkage') {
-                $('.shrinkage').show();
-                $('#div_comment').show();
-            }
+        let type = (tr.data('result-type') || '').toLowerCase();
+        let vf   = tr.data('value-from');
+        let vt   = tr.data('value-to');
 
-            // ==== FORMALDEHYDE ====
-            if (val === 'formaldehyde') {
-                $('.formaldehyde').show();
-                $('#div_value_from').show();
-                $('#div_value_to').show();
-            }
+        let resultCell  = tr.find('.result-cell');
+        let commentCell = tr.find('.comment-cell');
+        let statusCell  = tr.find('.status-cell');
+
+        let resultHidden  = tr.find('.result-hidden');
+        let commentHidden = tr.find('.comment-hidden');
+        let statusHidden  = tr.find('.status-hidden');
+
+        resultCell.empty();
+        commentCell.empty();
+        statusCell.empty();
+
+        
+        // ===== NUMBER =====
+      if (type === 'number') {
+
+          // render input
+          resultCell.html(`<input type="text" class="form-control result-input">`);
+
+        resultCell.find('.result-input').on('input', function () {
+
+          const row = $(this).closest('tr');
+
+          const fromVal   = row.data('value-from');
+          const toVal     = row.data('value-to');
+          const resultVal = $(this).val().trim();
+
+          // ===== KALAU KOSONG =====
+          if (resultVal === '') {
+              resultHidden.val('');
+              statusHidden.val('');
+              statusCell.text('').css('color', '');
+              return; // STOP DI SINI
+          }
+
+          const from   = parseInterval(fromVal);
+          const to     = parseInterval(toVal);
+          const result = parseInterval(resultVal);
+
+          resultHidden.val(resultVal);
+
+          let status = 'fail';
+
+          if (from && to && result) {
+              const lowerLimit = from.max;
+              const upperLimit = to.max;
+
+              if (result.max < lowerLimit) {
+                  status = 'fail';
+              }
+              else if (result.min > upperLimit) {
+                  status = 'fail';
+              }
+              else {
+                  status = 'pass';
+              }
+          }
+
+          statusHidden.val(status);
+          statusCell
+              .text(status.toUpperCase())
+              .css('color', status === 'pass' ? 'green' : 'red');
+      });
+
+}
+
+        // ===== BOOLEAN =====
+        if (type === 'boolean') {
+            resultCell.html(`
+                <select class="form-select">
+                    <option value="">-- pilih --</option>
+                    <option value="PASS">PASS</option>
+                    <option value="FAIL">FAIL</option>
+                </select>
+            `);
+
+            resultCell.find('select').on('change', function () {
+                resultHidden.val(this.value);
+                statusHidden.val(this.value);
+                statusCell.text(this.value);
+            });
+        }
+
+        // ===== STATEMENT =====
+        if (type === 'statement') {
+            commentCell.html(`<textarea class="form-control"></textarea>`);
+            statusCell.text('NA');
+            statusHidden.val('NA');
+
+            commentCell.find('textarea').on('input', function () {
+                commentHidden.val(this.value);
+            });
+        }
+    }
+
+    $(function () {
+        $('tr[data-result-type]').each(function () {
+            renderRow($(this));
         });
+    });
 
+      $(document).on('change', '.filter-method-group', function () {
 
-        $('#method_group').on('change', function () {
-            if ($(this).val() == 'Product') {
-                $('.other').show();
-            } else {
-                // hide
-                $('.other').hide();
-              
+          // cek apakah Product dicentang
+          let isProductChecked = $('.filter-method-group[value="Product"]').is(':checked');
 
-                // kosongkan semua input, select, textarea di dalam .other
-                $('.other').find('input, select, textarea').val('');
-               
-                
-                // kalau ada checkbox atau radio
-                $('.other').find('input:checkbox, input:radio').prop('checked', false);
-            }
-        });
+          if (isProductChecked) {
+              $('.other').show();
+          } else {
+              $('.other').hide();
+
+              // kosongkan semua input di .other
+              $('.other').find('input, select, textarea').val('');
+              $('.other').find('input:checkbox, input:radio').prop('checked', false);
+          }
+      });
 
 
         $(document).on('click', '#tambah', function(e){   
@@ -1490,7 +1795,7 @@ function status_formaldehyde_result() {
         result.max >= lowerLimit &&  // menyentuh batas bawah
         result.min <= upperLimit;    // tidak lewat batas atas
 
-    statusEl.value = pass ? "pass" : "fail";
+    statusEl.value = pass ? "pass" : "fail"; 
 }
 
 </script>

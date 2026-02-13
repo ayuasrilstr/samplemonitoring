@@ -212,7 +212,7 @@
                                         <div class="col-md-12">
                                             <div class="form-group">
                                                 <label>Order Number / PO - LCO</label>
-                                                <input type="text" name="order_number" class="form-control" value="<?php echo $penerimaan['data']->order_number ?>" disabled>
+                                                <input type="text" name="order_number" class="form-control" value="<?php echo $penerimaan['data']->order_number ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-12">
@@ -486,7 +486,7 @@
                                         <div class="col-md-12"><br>
                                             <div class="form-group">
                                                 <label>Compotition</label>
-                                                <input type="text" name="composition" id="composition" class="form-control" disabled>
+                                                <input type="text" name="composition" id="composition" class="form-control">
                                             </div>
                                         </div>
                                         <div class="col-md-6">
@@ -571,7 +571,7 @@
                                     <div class="col-md-2">
                                         <div class="form-group">
                                         <label>Bleching Process</label>
-                                            <select name="bleching" class="form-control" disabled>
+                                            <select name="bleching" class="form-control">
                                                 <option selected disabled value="">--- Select Care Instruction ---</option>
                                                 <?php foreach($penerimaan['bleching'] as $u): ?>
                                                     <option value="<?= $u->id_care ?>"

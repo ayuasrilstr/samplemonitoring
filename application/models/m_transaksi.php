@@ -523,66 +523,65 @@ public function get_assign_by_id($id_penerimaan, $report_no)
 }
 
 
-public function get_pengujian_selesai()
+  public function get_pengujian_selesai()
 {
     $sql = "
         SELECT 
             tbl_penerimaan.*,
-            stat_sub.date_final,
-            stat_sub.jumlah_pengujian,
-            stat_sub.selesai,
-            stat_sub.belum_selesai,
-            stat_sub.hasil_akhir,
-            GROUP_CONCAT(DISTINCT tbl_kualitas.status) AS semua_status
-        FROM (
-            SELECT 
-                report_handlingsample.id_penerimaan,
-                MAX(report_handlingsample.date_final) AS date_final,
-                COUNT(*) AS jumlah_pengujian,
-                SUM(
+
+            MAX(report_kualitas.date_finish) AS date_final,
+            COUNT(report_kualitas.id_reportkualitas) AS jumlah_pengujian,
+
+            SUM(
+                CASE 
+                    WHEN (report_kualitas.date_finish IS NULL 
+                          OR report_kualitas.date_finish = '0000-00-00')
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS belum_selesai,
+
+            SUM(
+                CASE 
+                    WHEN report_kualitas.date_finish IS NOT NULL 
+                         AND report_kualitas.date_finish != '0000-00-00'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS selesai,
+
+            CASE 
+                WHEN SUM(
                     CASE 
-                        WHEN (report_handlingsample.date_final IS NULL OR report_handlingsample.date_final = '0000-00-00') 
-                             AND NOT EXISTS (
-                                 SELECT 1
-                                 FROM tbl_kualitas
-                                 WHERE tbl_kualitas.id_penerimaan = report_handlingsample.id_penerimaan
-                                   AND tbl_kualitas.status = 'kembali'
-                             )
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS belum_selesai,
-                SUM(
-                    CASE 
-                        WHEN report_handlingsample.date_final IS NOT NULL 
-                             AND report_handlingsample.date_final != '0000-00-00' 
+                        WHEN report_kualitas.status = 'fail'
                         THEN 1 
                         ELSE 0 
                     END
-                ) AS selesai,
-                CASE 
-                    WHEN SUM(CASE WHEN report_handlingsample.result_status = 'fail' THEN 1 ELSE 0 END) > 0 
-                    THEN 'fail'
-                    ELSE 'pass'
-                END AS hasil_akhir
-            FROM report_handlingsample
-            GROUP BY report_handlingsample.id_penerimaan
-        ) stat_sub
-        JOIN tbl_penerimaan 
-            ON tbl_penerimaan.id_penerimaan = stat_sub.id_penerimaan
-        LEFT JOIN tbl_kualitas 
-            ON tbl_kualitas.id_penerimaan = stat_sub.id_penerimaan
-        
-        -- 🔥 Tambahkan ini: hanya tampilkan data yang date_final-nya tidak kosong
-        WHERE stat_sub.date_final IS NOT NULL 
-          AND stat_sub.date_final != '' 
-          AND stat_sub.date_final != '0000-00-00'
+                ) > 0
+                THEN 'fail'
+                ELSE 'pass'
+            END AS hasil_akhir,
 
-        GROUP BY stat_sub.id_penerimaan
+            GROUP_CONCAT(DISTINCT tbl_kualitas.status) AS semua_status
+
+        FROM report_kualitas
+
+        JOIN tbl_penerimaan 
+            ON tbl_penerimaan.id_penerimaan = report_kualitas.id_penerimaan
+
+        LEFT JOIN tbl_kualitas 
+            ON tbl_kualitas.id_penerimaan = report_kualitas.id_penerimaan
+
+        WHERE report_kualitas.date_finish IS NOT NULL
+          AND report_kualitas.date_finish != ''
+          AND report_kualitas.date_finish != '0000-00-00'
+
+        GROUP BY report_kualitas.id_penerimaan
     ";
 
     return $this->db->query($sql)->result();
 }
+
 
 
 
@@ -778,133 +777,176 @@ public function get_pengujian_selesai()
         return $this->db->get()->result();
     }
 
-    public function get_report_data_all($id_penerimaan, $new_report_no)
-    {
-        $this->db->select('
-            report_kualitas.*,
-            tbl_kualitas.*,
-            report_handlingsample.*,
-            tbl_penerimaan.*,
-            m_material.id_material,
-            m_material.item_no AS material_item_no,
-            m_material.deskripsi,
-            tbl_testmatrix.*,
-            tbl_testmethod.*,
-            tbl_order.*,
+ public function get_report_data_all($id_penerimaan, $new_report_no)
+{
+    $this->db->select('
+        report_finalhandling.*,
+        tbl_penerimaan.*,
+        report_kualitas.*,
+        tbl_kualitas.*,
+        m_material.id_material,
+        m_material.item_no AS material_item_no,
+        m_material.deskripsi,
+        tbl_testmatrix.*,
+        tbl_testmethod.*,
+        tbl_order.*,
 
-            report_finalhandling.jenis_report,
-            report_finalhandling.report_no,
-            report_finalhandling.new_report_no AS no_final,
-            report_finalhandling.date_sending,
-            report_finalhandling.signature,
-            report_finalhandling.review,
-            report_finalhandling.authorized,
-            report_finalhandling.comment_final,
-            report_finalhandling.remarks_final,
+        m_supplier.supplier_name,
+        m_supplier.supplier_code,
 
-            m_supplier.supplier_name,
-            m_supplier.supplier_code,
+        m_stages.id_stages,
+        m_stages.testing_stages,
 
-            m_stages.id_stages,
-            m_stages.testing_stages,
+        m_ttd.nama AS signature_name,
+        m_ttd.jabatan AS signature_jabatan,
+        m_ttd.tanda_tangan AS signature_file,
 
-            ttd_sig.nama AS signature_name,
-            ttd_sig.jabatan AS signature_jabatan,
-            ttd_sig.tanda_tangan AS signature_file,
+        m_ttd2.nama AS review_name,
+        m_ttd2.jabatan AS review_jabatan,
+        m_ttd2.tanda_tangan AS review_file,
 
-            ttd_rev.nama AS review_name,
-            ttd_rev.jabatan AS review_jabatan,
-            ttd_rev.tanda_tangan AS review_file,
+        m_ttd3.nama AS authorized_name,
+        m_ttd3.jabatan AS authorized_jabatan,
+        m_ttd3.tanda_tangan AS authorized_file,
 
-            ttd_auth.nama AS authorized_name,
-            ttd_auth.jabatan AS authorized_jabatan,
-            ttd_auth.tanda_tangan AS authorized_file,
+        m_care.simbol_care AS washing_symbol,
+        m_care2.simbol_care AS bleach_symbol,
+        m_care3.simbol_care AS drying_symbol,
+        m_care4.simbol_care AS ironing_symbol,
+        m_care5.simbol_care AS pressing_symbol
+    ');
 
-            care_wash.simbol_care AS washing_symbol,
-            care_bleach.simbol_care AS bleach_symbol,
-            care_dry.simbol_care AS drying_symbol,
-            care_iron.simbol_care AS ironing_symbol,
-            care_press.simbol_care AS pressing_symbol
-        ');
+    /* ===============================
+       BASE DARI FINAL HANDLING
+    ================================ */
+    $this->db->from('report_finalhandling');
 
-        $this->db->from('report_kualitas');
+    /* ===============================
+       JOIN HEADER
+    ================================ */
+    $this->db->join(
+        'tbl_penerimaan',
+        'tbl_penerimaan.id_penerimaan = report_finalhandling.id_penerimaan',
+        'left'
+    );
 
-        $this->db->join('report_handlingsample',
-            'report_handlingsample.id_reportkualitas = report_kualitas.id_reportkualitas');
+    $this->db->join(
+        'm_material',
+        'm_material.item_no = tbl_penerimaan.item_no',
+        'left'
+    );
 
-        $this->db->join('tbl_kualitas',
-            'tbl_kualitas.id_kualitas = report_handlingsample.id_kualitas');
+    $this->db->join(
+        'tbl_order',
+        'tbl_order.order_number = tbl_penerimaan.order_number',
+        'left'
+    );
 
-        $this->db->join('tbl_penerimaan',
-            'tbl_penerimaan.id_penerimaan = report_handlingsample.id_penerimaan');
+    $this->db->join(
+        'm_supplier',
+        'm_supplier.supplier_name = tbl_penerimaan.supplier_name',
+        'left'
+    );
 
-        $this->db->join('m_material',
-            'm_material.item_no = tbl_penerimaan.item_no', 'left');
+    $this->db->join(
+        'm_stages',
+        'm_stages.id_stages = tbl_penerimaan.stage',
+        'left'
+    );
 
-        $this->db->join('tbl_testmatrix',
-            'tbl_testmatrix.id_testmatrix = report_kualitas.id_testmatrix', 'left');
+    /* ===============================
+       JOIN DETAIL TEST
+    ================================ */
+    $this->db->join(
+        'report_kualitas',
+        'report_kualitas.id_penerimaan = report_finalhandling.id_penerimaan
+         AND report_kualitas.report_no = report_finalhandling.report_no',
+        'left'
+    );
 
-        $this->db->join('tbl_testmethod',
-            'tbl_testmethod.id_testmethod = tbl_testmatrix.id_testmethod', 'left');
+    $this->db->join(
+        'tbl_kualitas',
+        'tbl_kualitas.id_kualitas = report_kualitas.id_kualitas',
+        'left'
+    );
 
-        $this->db->join('tbl_order',
-            'tbl_order.order_number = tbl_penerimaan.order_number','left');
-        /* ===============================
-        JOIN FINAL HANDLING (FILTER!)
-        ================================ */
-        
-        if (!empty($new_report_no)) {
-            $this->db->join(
-                'report_finalhandling',
-                'report_finalhandling.id_penerimaan = tbl_penerimaan.id_penerimaan
-                AND report_finalhandling.new_report_no = '.$this->db->escape($new_report_no),
-                'left'
-            );
-        } else {
-            $this->db->join(
-                'report_finalhandling',
-                'report_finalhandling.id_penerimaan = tbl_penerimaan.id_penerimaan',
-                'left'
-            );
-        }
-        
-        
-        //    $this->db->join( 'report_finalhandling', 'report_finalhandling.id_penerimaan = tbl_penerimaan.id_penerimaan AND report_finalhandling.new_report_no = '.$this->db->escape($new_report_no), 'left' );
+    $this->db->join(
+        'tbl_testmatrix',
+        'tbl_testmatrix.id_testmatrix = report_kualitas.id_testmatrix',
+        'left'
+    );
 
-        $this->db->join('m_stages',
-            'm_stages.id_stages = tbl_penerimaan.stage', 'left');
+    $this->db->join(
+        'tbl_testmethod',
+        'tbl_testmethod.id_testmethod = tbl_testmatrix.id_testmethod',
+        'left'
+    );
 
-        $this->db->join('m_supplier',
-            'm_supplier.supplier_name = tbl_penerimaan.supplier_name', 'left');
+    /* ===============================
+       JOIN SIGNATURE
+    ================================ */
+    $this->db->join(
+        'm_ttd',
+        'm_ttd.id_ttd = report_finalhandling.signature',
+        'left'
+    );
 
-        $this->db->join('m_ttd ttd_sig',
-            'ttd_sig.id_ttd = report_finalhandling.signature', 'left');
+    $this->db->join(
+        'm_ttd m_ttd2',
+        'm_ttd2.id_ttd = report_finalhandling.review',
+        'left'
+    );
 
-        $this->db->join('m_ttd ttd_rev',
-            'ttd_rev.id_ttd = report_finalhandling.review', 'left');
+    $this->db->join(
+        'm_ttd m_ttd3',
+        'm_ttd3.id_ttd = report_finalhandling.authorized',
+        'left'
+    );
 
-        $this->db->join('m_ttd ttd_auth',
-            'ttd_auth.id_ttd = report_finalhandling.authorized', 'left');
+    /* ===============================
+       JOIN CARE LABEL
+    ================================ */
+    $this->db->join(
+        'm_care',
+        'm_care.id_care = tbl_penerimaan.washing',
+        'left'
+    );
 
-        $this->db->join('m_care care_wash',
-            'care_wash.id_care = tbl_penerimaan.washing', 'left');
+    $this->db->join(
+        'm_care m_care2',
+        'm_care2.id_care = tbl_penerimaan.bleach',
+        'left'
+    );
 
-        $this->db->join('m_care care_bleach',
-            'care_bleach.id_care = tbl_penerimaan.bleach', 'left');
+    $this->db->join(
+        'm_care m_care3',
+        'm_care3.id_care = tbl_penerimaan.drying',
+        'left'
+    );
 
-        $this->db->join('m_care care_dry',
-            'care_dry.id_care = tbl_penerimaan.drying', 'left');
+    $this->db->join(
+        'm_care m_care4',
+        'm_care4.id_care = tbl_penerimaan.ironing',
+        'left'
+    );
 
-        $this->db->join('m_care care_iron',
-            'care_iron.id_care = tbl_penerimaan.ironing', 'left');
+    $this->db->join(
+        'm_care m_care5',
+        'm_care5.id_care = tbl_penerimaan.profess',
+        'left'
+    );
 
-        $this->db->join('m_care care_press',
-            'care_press.id_care = tbl_penerimaan.profess', 'left');
+    /* ===============================
+       FILTER WAJIB
+    ================================ */
+    $this->db->where('report_finalhandling.id_penerimaan', $id_penerimaan);
+    $this->db->where('report_finalhandling.new_report_no', $new_report_no);
 
-        $this->db->where('tbl_penerimaan.id_penerimaan', $id_penerimaan);
+    $this->db->order_by('report_kualitas.id_reportkualitas', 'ASC');
 
-        return $this->db->get()->result();
-    }
+    return $this->db->get()->result();
+}
+
 
     public function get_report_data_adidas($id_handlingsample)
     {
@@ -951,51 +993,46 @@ public function get_pengujian_selesai()
 }*/
 public function get_reportmethod_adidasAll($id_penerimaan, $new_report_no)
 {
+    $this->db->select('
+        report_kualitas.*,
+        tbl_testmatrix.*,
+        tbl_testmethod.*
+    ');
+
     /* ===============================
-       AMBIL BASE + MAX VERSION
+       BASE DARI FINAL HANDLING
     ================================ */
+    $this->db->from('report_finalhandling');
 
-    // ambil angka versi dari new_report_no (A1, A2, dst)
-    preg_match('/A(\d+)/', $new_report_no, $m);
-    $max_version = isset($m[1]) ? (int)$m[1] : 0;
-
-    $this->db->select('rkh.*, rh.*, tm.*, tsm.*');
-    $this->db->from('report_kualitas rkh');
-
+    /* ===============================
+       JOIN DETAIL TEST
+    ================================ */
     $this->db->join(
-        'report_handlingsample rh',
-        'rh.id_reportkualitas = rkh.id_reportkualitas'
-    );
-
-    $this->db->join(
-        'tbl_testmatrix tm',
-        'tm.id_testmatrix = rkh.id_testmatrix',
+        'report_kualitas',
+        'report_kualitas.id_penerimaan = report_finalhandling.id_penerimaan
+         AND report_kualitas.report_no = report_finalhandling.report_no',
         'left'
     );
 
     $this->db->join(
-        'tbl_testmethod tsm',
-        'tsm.id_testmethod = tm.id_testmethod',
+        'tbl_testmatrix',
+        'tbl_testmatrix.id_testmatrix = report_kualitas.id_testmatrix',
+        'left'
+    );
+
+    $this->db->join(
+        'tbl_testmethod',
+        'tbl_testmethod.id_testmethod = tbl_testmatrix.id_testmethod',
         'left'
     );
 
     /* ===============================
-       FILTER ID PENERIMAAN
+       FILTER WAJIB
     ================================ */
-    $this->db->where('rh.id_penerimaan', $id_penerimaan);
+    $this->db->where('report_finalhandling.id_penerimaan', $id_penerimaan);
+    $this->db->where('report_finalhandling.new_report_no', $new_report_no);
 
-    /* ===============================
-       FILTER VERSI (PENTING)
-    ================================ */
-    if ($max_version > 0) {
-        // base (rilis 0) + A1..Ax
-        $this->db->where('rkh.rilis <=', $max_version);
-    } else {
-        // base saja
-        $this->db->where('(rkh.rilis IS NULL OR rkh.rilis = 0)', null, false);
-    }
-
-    $this->db->order_by('rkh.id_reportkualitas', 'ASC');
+    $this->db->order_by('report_kualitas.id_reportkualitas', 'ASC');
 
     return $this->db->get()->result_array();
 }
@@ -1224,9 +1261,20 @@ public function get_reportmethod_checklist($id_penerimaan)
     
     public function getPenerimaan()
     {
-       $query = $this->db->query("SELECT * FROM tbl_penerimaan Where buyer = 'adidas'");
+        $this->db->select('
+            tbl_penerimaan.*,
+            COUNT(tbl_kualitas.id_kualitas) AS total_test
+        ');
+        $this->db->from('tbl_penerimaan');
+        $this->db->join(
+            'tbl_kualitas',
+            'tbl_kualitas.id_penerimaan = tbl_penerimaan.id_penerimaan',
+            'left'
+        );
+        $this->db->where('tbl_penerimaan.buyer', 'adidas');
+        $this->db->group_by('tbl_penerimaan.id_penerimaan');
 
-       return $query;
+        return $this->db->get();
     }
 
     public function editPenerimaan($id_penerimaan, $data)
@@ -1257,6 +1305,15 @@ public function get_reportmethod_checklist($id_penerimaan)
     {
         return $this->db->get('tbl_kualitas');
     }
+    
+    public function getIndexKualitas()
+    {
+        return $this->db
+            ->from('tbl_penerimaan')
+            ->order_by('datetime_received', 'DESC')
+            ->get();
+    }
+
 
 public function joinKualitasByPenerimaan()
 {
@@ -1400,11 +1457,38 @@ public function update_handlingsample($data, $id_reportkualitas)
             return $kodeTampil;
     }
 
-    public function get_test_result($report_no) {
-        $this->db->where('report_no', $report_no);
-        $query = $this->db->get('tbl_kualitas');
-        return $query->result(); // array semua baris
-    }
+   public function get_test_result($report_no, $id_kualitas_array)
+{
+    $this->db->select('
+        tbl_kualitas.*,
+        m_test_req.test_required as map_test_required,
+        m_test_req.test_type,
+        tbl_testmatrix.*,
+      
+    ');
+
+    $this->db->from('tbl_kualitas');
+
+    // JOIN KE MASTER TEST REQUIRED
+    $this->db->join(
+        'm_test_req',
+        'JSON_CONTAINS(tbl_kualitas.test_required, JSON_QUOTE(m_test_req.test_required))',
+        'left'
+    );
+
+    // JOIN KE TEST MATRIX
+    $this->db->join(
+        'tbl_testmatrix',
+        'tbl_testmatrix.test_type = m_test_req.test_type',
+        'left'
+    );
+
+    $this->db->where('tbl_kualitas.report_no', $report_no);
+    $this->db->where_in('tbl_kualitas.id_kualitas', $id_kualitas_array);
+
+    return $this->db->get()->result();
+}
+
 
     public function getByIdKualitas($where)
     {
@@ -1845,15 +1929,22 @@ public function update_handlingsample($data, $id_reportkualitas)
     }
     public function tampil_testmatrix()
     {
-        $this->db->select('tbl_testmatrix.*, tbl_testmethod.*, m_methodgroup.*');
+        // Ambil kolom penting dari tbl_testmatrix
+        $this->db->select('tbl_testmatrix.*');
         $this->db->from('tbl_testmatrix');
+        $this->db->order_by('tbl_testmatrix.time', 'DESC');
+
+        // Jika memang perlu join ke tbl_testmethod / m_methodgroup untuk info tambahan,
+        // beri alias supaya kolom tidak menimpa tbl_testmatrix
+        /*
         $this->db->join('tbl_testmethod','tbl_testmethod.id_testmethod = tbl_testmatrix.id_testmethod');
         $this->db->join('m_methodgroup','m_methodgroup.id_methodgroup = tbl_testmethod.id_methodgroup');
-        $this->db->order_by('tbl_testmatrix.time',"DESC");
-      
+        $this->db->select('tbl_testmethod.method_name AS method_name, m_methodgroup.group_name AS group_name');
+        */
+
         return $this->db->get();
     }
-    
+
     public function insert_reportKualitas($data)
     {
         $this->db->insert_batch('report_kualitas', $data);
@@ -1976,32 +2067,35 @@ public function update_handlingsample($data, $id_reportkualitas)
         return $this->db->get('m_ttd');
     }
     
-    public function getHistoryNo($id_penerimaan)
-    {
-        $this->db->select('
-            rf.*,
-            hs.*,
-            tp.*
-        ');
+public function getHistoryNo($id_penerimaan)
+{
+    $this->db->select('
+        report_finalhandling.*,
+        
+        tbl_penerimaan.*
+    ');
 
-        $this->db->from('report_finalhandling rf');
+    $this->db->from('report_finalhandling');
 
-        // Subquery untuk handlingsample
-        $sub_hs = "(SELECT * FROM report_handlingsample WHERE id_penerimaan = " .
-                $this->db->escape($id_penerimaan) . " LIMIT 1)";
-        $this->db->join($sub_hs . " hs", "hs.id_penerimaan = rf.id_penerimaan", "left", false);
+    $this->db->join(
+        'tbl_penerimaan',
+        'tbl_penerimaan.id_penerimaan = report_finalhandling.id_penerimaan',
+        'left'
+    );
 
-        // Subquery untuk tbl_penerimaan
-        $sub_tp = "(SELECT * FROM tbl_penerimaan WHERE id_penerimaan = " .
-                $this->db->escape($id_penerimaan) . " LIMIT 1)";
-        $this->db->join($sub_tp . " tp", "tp.id_penerimaan = rf.id_penerimaan", "left", false);
+    $this->db->where('report_finalhandling.id_penerimaan', $id_penerimaan);
 
-        // Fokus tetap ke report_finalhandling
-        $this->db->where('rf.id_penerimaan', $id_penerimaan);
-        $this->db->order_by('rf.id_final', 'DESC');
+    $this->db->group_by(array(
+        'report_finalhandling.report_no',
+        'report_finalhandling.jenis_report',
+        'report_finalhandling.new_report_no'
+    ));
 
-        return $this->db->get()->result();
-    }
+    $this->db->order_by('report_finalhandling.id_final', 'DESC');
+
+    return $this->db->get()->result();
+}
+
 
     public function getHistoryAll()
     {
@@ -2058,33 +2152,29 @@ public function update_handlingsample($data, $id_reportkualitas)
     }
 
     
-public function getTestRequiredDropdown($id_penerimaan, $report_no)
-{
-    $this->db->select('tbl_kualitas.test_required');
-    $this->db->from('tbl_kualitas');
-    $this->db->join(
-        'report_kualitas',
-        'report_kualitas.id_kualitas = tbl_kualitas.id_kualitas',
-        'left'
-    );
+    public function getTestRequiredDropdown($id_penerimaan)
+    {
+        return $this->db
+            ->select('id_kualitas, test_required')
+            ->from('tbl_kualitas')
+            ->where('id_penerimaan', $id_penerimaan)
+            ->where_in('status', ['belum', 'kembali'])
+            ->where('color IS NOT NULL', null, false)   // color tidak NULL
+            ->where('color !=', '')                      // color tidak kosong
+            ->order_by('test_required', 'ASC')
+            ->get()
+            ->result();
+    }
 
-    // Filter penerimaan dan report_no
-    $this->db->where('tbl_kualitas.id_penerimaan', $id_penerimaan);
-    $this->db->where('report_kualitas.id_reportkualitas', $report_no);
 
-    // Filter test_required valid
-    $this->db->where('tbl_kualitas.test_required !=', '-');
-    $this->db->where('tbl_kualitas.test_required IS NOT NULL');
-    $this->db->where('tbl_kualitas.test_required !=', '');
+    public function getTestRequiredPenerimaan()
+    {
+        return $this->db
+            ->order_by('id','ASC')   // kalau nama PK beda, ganti disini
+            ->get('m_test_req')
+            ->result_array();
+    }
 
-    // Hanya status yang bisa diproses
-    $this->db->where_in('tbl_kualitas.status', ['belum', 'kembali']);
-
-    $this->db->group_by('tbl_kualitas.test_required');
-    $this->db->order_by('tbl_kualitas.test_required', 'ASC');
-
-    return $this->db->get()->result();
-}
 
 
 

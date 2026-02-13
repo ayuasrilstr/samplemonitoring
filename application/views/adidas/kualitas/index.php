@@ -145,7 +145,7 @@ table.dataTable td img {
     </div>
     <div class="card p-3">
       <div class="table-responsive">
-        <table id="example1" class="table table-bordered table-striped table-sm text-nowrap">
+        <table class="table table-bordered table-striped table-sm text-nowrap tableDefault">
         <thead>
           <tr>
               <th class="all">No</th>
@@ -176,37 +176,22 @@ table.dataTable td img {
                                             <td><?= $u->article_no?></td>
                                             <td><?= $u->code_of_fabric?></td>
                                             <td><?= $u->style_no?></td>
-                                            <td class="text-nowrap">
-                                              <?php if ($u->jumlah_kembali > 0): ?>
-                                                  <!-- REVISI -->
-                                                  <a href="<?= site_url("c_transaksi/edit_kualitas/{$u->id_penerimaan}/{$u->id_reportkualitas}") ?>"
-                                                    class="btn btn-warning btn-sm">
-                                                      <i class="fa fa-undo"></i> Revisi
-                                                  </a>
-
-                                              <?php elseif ($u->jumlah_belum > 0): ?>
-                                                  <!-- MULAI TEST (BUKA MODAL) -->
-                                                  <button type="button"
-                                                    class="btn btn-primary btn-sm btnMulaiTest"
-                                                    data-toggle="modal"
-                                                    data-target="#modalPilihTest"
-                                                    data-id_penerimaan="<?= $u->id_penerimaan ?>"
-                                                    data-id_kualitas="<?= $u->id_kualitas ?>"
-                                                    data-report_no="<?= $u->report_no ?>">
-                                                    <i class="fa fa-play"></i> Mulai Test
-                                                  </button>
-                                              <?php else: ?>
-                                                  <!-- SUDAH SELESAI -->
-                                                  <button class="btn btn-success btn-sm" disabled>
-                                                      <i class="fa fa-check"></i> Selesai
-                                                  </button>
-                                              <?php endif; ?>
-                                              <!-- DETAIL (SELALU ADA) -->
-                                              <a href="<?= site_url('c_transaksi/detail_kualitas/' . $u->id_penerimaan) ?>"
-                                                class="btn btn-outline-success btn-sm">
-                                                  <i class="fa fa-eye"></i>
-                                              </a>
-                                          </td>
+                                          <td class="text-nowrap">
+                                            <!-- MULAI TEST / LANJUTKAN -->
+                                            <a href="javascript:void(0)"
+                                              class="btn btn-primary btn-sm"
+                                              data-toggle="modal"
+                                              data-target="#modalPilihTest"
+                                              data-id_penerimaan="<?= $u->id_penerimaan ?>"
+                                              data-report_no="<?= $u->report_no ?>">
+                                              <i class="fa fa-play"></i> Mulai Test
+                                            </a>
+                                            <!-- DETAIL KUALITAS -->
+                                            <a href="<?= site_url('c_transaksi/detail_kualitas/' . $u->id_penerimaan) ?>"
+                                              class="btn btn-outline-success btn-sm">
+                                                <i class="fa fa-eye"></i>
+                                            </a>
+                                        </td>
                                         </tr>
                                       <?php endforeach; ?>
                                     </tbody>
@@ -223,44 +208,86 @@ table.dataTable td img {
                 </button>
               </div>
               <div class="modal-body modal-body-clean">
-                  <input type=input" id="id_penerimaan" name="id_penerimaan">
-                  <input type="input" id="id_kualitas" name="id_kualitas">
-                  <input type="input" id="report_no" name="report_no">
-                  <!-- DROPDOWN -->
-                  <div class="dropdown w-100">
-                    <button
-                      class="btn btn-outline-secondary w-100 text-left dropdown-toggle"
-                      type="button"
-                      data-toggle="dropdown">
-                      Pilih Test Required
-                    </button>
-                    <div class="dropdown-menu w-100 p-2"
-                        style="max-height:260px; overflow-y:auto;">
-                      <!-- SEARCH -->
-                      <input type="text"
-                            class="form-control form-control-sm mb-2"
-                            id="searchTest"
-                            placeholder="Cari test...">
+                  <input type="hidden" id="id_penerimaan" name="id_penerimaan">
+                  <input type="hidden" id="report_no" name="report_no">
+                  <!-- DROPDOWN TEST REQUIRED-->
+                  <div class="form-group">
+                    <label>Test Required</label>
+                     <div class="dropdown w-100">
+                      <button
+                        class="btn btn-outline-secondary w-100 text-left dropdown-toggle"
+                        type="button"
+                        data-toggle="dropdown">
+                        Pilih Test Required
+                      </button>
+                      <div class="dropdown-menu w-100 p-2"
+                          style="max-height:260px; overflow-y:auto;">
+                        <!-- SEARCH -->
+                        <input type="text"
+                              class="form-control form-control-sm mb-2"
+                              id="searchTest"
+                              placeholder="Cari test...">
 
-                        <!-- ACTION BUTTON -->
-                        <div class="d-flex justify-content-between mb-2">
-                          <button type="button"
-                                  class="btn btn-sm btn-outline-primary"
-                                  id="btnSelectAll">
-                            Select All
-                          </button>
+                          <!-- ACTION BUTTON -->
+                          <div class="d-flex justify-content-between mb-2">
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary"
+                                    id="btnSelectAll">
+                              Select All
+                            </button>
 
-                          <button type="button"
-                                  class="btn btn-sm btn-outline-danger"
-                                  id="btnClearAll">
-                            Clear
-                          </button>
-                        </div>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-danger"
+                                    id="btnClearAll">
+                              Clear
+                            </button>
+                          </div>
 
 
-                      <!-- LIST CHECKBOX -->
-                      <div id="list-test-required"></div>
+                        <!-- LIST CHECKBOX -->
+                        <div id="list-test-required"></div>
 
+                      </div>
+                    </div><br>
+                  </div>
+                  <div class="form-group">
+                    <label>Color </label>
+                  <!-- DROPDOWN COLOR-->
+                    <div class="dropdown w-100">
+                      <button
+                        class="btn btn-outline-secondary w-100 text-left dropdown-toggle"
+                        type="button"
+                        data-toggle="dropdown">
+                        Pilih Warna
+                      </button>
+                      <div class="dropdown-menu w-100 p-2"
+                          style="max-height:260px; overflow-y:auto;">
+                        <!-- SEARCH -->
+                        <input type="text"
+                              class="form-control form-control-sm mb-2"
+                              id="searchColor"
+                              placeholder="Cari warna...">
+
+                          <!-- ACTION BUTTON -->
+                          <div class="d-flex justify-content-between mb-2">
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary"
+                                    id="btnSelectAllColor">
+                              Select All
+                            </button>
+
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-danger"
+                                    id="btnClearAllolor">
+                              Clear
+                            </button>
+                          </div>
+
+
+                        <!-- LIST CHECKBOX -->
+                        <div id="list-color"></div>
+
+                      </div>
                     </div>
                   </div>
               </div>

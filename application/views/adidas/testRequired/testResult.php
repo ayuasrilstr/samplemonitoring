@@ -56,11 +56,7 @@
                 <li class="breadcrumb-item active">Kualitas - <?= htmlspecialchars($testResult->report_no ?? '') ?></li>
                 </ol>
           </div>
-          <div class="col-sm-6">
-            <ol class="breadcrumb float-sm-right">
-                <li class="breadcrumb-item"><button data-target="#ModalOption" data-toggle="modal" type="button" class="btn btn-sm btn-outline-primary" id="tambah">Method List</button></li>
-            </ol>
-          </div>
+          
         </div>
       </div>
 </div>
@@ -68,10 +64,12 @@
     <div class="container-fluid">
         <form action = "<?php echo site_url('c_transaksi/tambahaksi_method'); ?>" method="post" name="method"> 
             <!-- Inputan ID -->
+            <?php $firstTestResult = isset($testResult[0]) ? $testResult[0] : null; ?>
             <input type="hidden" name="id_kualitas" value="<?= $id_kualitas ?>">
-            <input type="hidden" name="id_penerimaan" value="<?= $testResult->id_penerimaan ?? '' ?>">
-            <input type="hidden" name="id_reportkualitas" value="<?= $testResult->id_reportkualitas ?? $kodereport ?>">
-            <input type="hidden" name="report_no" value="<?= $testResult->report_no ?? '' ?>">
+            <input type="hidden" name="id_penerimaan" value="<?= $firstTestResult->id_penerimaan ?? '' ?>">
+            <input type="hidden" name="id_reportkualitas" value="<?= $firstTestResult->id_reportkualitas ?? $kodereport ?>">
+            <input type="hidden" name="report_no" value="<?= $firstTestResult->report_no ?? $report_no ?>">
+
             <input type="hidden"
                 name="test_required"
                 value='<?= json_encode($test_required) ?>'>
@@ -85,14 +83,6 @@
                     <div class="card-body-modern">
                         <!-- Semua input Data Quality -->
                         <div class="row">
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <label>Test Required</label>
-                                    <textarea class="form-control" rows="5" readonly>
-                                        <?= implode("\n", $test_required) ?>
-                                    </textarea>
-                                </div>
-                            </div>
                             <div class="col-md-6">
                                 <label>Date Of Sampling</label>
                                 <input class="form-control" type="date" name="date_sampling">
@@ -981,314 +971,222 @@
                     </div>
                 </div>
             </div>
-            
             <!-- CARD Test Method -->
             <div class="card card-modern">
                 <div class="card-header-modern" data-toggle="collapse" data-target="#cardTestMethod" onclick="this.querySelector('.toggle-icon').classList.toggle('rotate')">
-                    <span>Method - <?= htmlspecialchars($testResult->test_required ?? '') ?></span>
+                    <span>&nbsp;</span>
                     <i class="fas fa-chevron-down toggle-icon"></i>
                 </div>
                 <div id="cardTestMethod" class="collapse">
                     <div class="card-body-modern test_result">
-                        <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Method Group</label>
-                                <select name="method_group" id="method_group" class="form-control" onchange="updateTestMatrixDropdown(this.value)">
-                                    <option selected disabled>Pilih Method Group</option>
-                                    <?php foreach ($method_groups as $method_group): ?>
-                                        <option value="<?php echo $method_group->method_group; ?>"><?php echo $method_group->method_group; ?></option>
+                            <h3>Test Result - Report No: <?= htmlspecialchars($report_no) ?></h3>
+                        <!-- ================= FILTER TYPE TEST ================= -->
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <div class="dropdown flex-fill">
+                                <button class="btn btn-outline-secondary dropdown-toggle w-100"
+                                        type="button"
+                                        data-toggle="dropdown">
+                                    Filter Type Test
+                                </button>
+
+                                <div class="dropdown-menu p-3" id="filter-type">
+
+                                    <!-- ACTION -->
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <button type="button"
+                                                class="btn btn-sm btn-link p-0 select-all"
+                                                data-target="type">
+                                            Select All
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-sm btn-link text-danger p-0 clear-all"
+                                                data-target="type">
+                                            Clear All
+                                        </button>
+                                    </div>
+
+                                    <hr class="my-2">
+
+                                    <?php foreach(array_keys($matrix_group) as $type): ?>
+                                        <div class="form-check">
+                                            <input class="form-check-input filter-type"
+                                                type="checkbox"
+                                                value="<?= htmlspecialchars($type) ?>"
+                                                checked
+                                                id="type_<?= md5($type) ?>">
+                                            <label class="form-check-label"
+                                                for="type_<?= md5($type) ?>">
+                                                <?= htmlspecialchars($type) ?>
+                                            </label>
+                                        </div>
                                     <?php endforeach; ?>
-                                </select>
+                                </div>
+                                </div>
+                                <div class="dropdown flex-fill">
+                                    <button class="btn btn-outline-secondary dropdown-toggle w-100"
+                                            type="button"
+                                            data-toggle="dropdown">
+                                        Filter Method Group
+                                    </button>
+                                    <div class="dropdown-menu p-3">
+                                        <!-- ACTION -->
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-link p-0 select-all"
+                                                    data-target="method-group">
+                                                Select All
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-link text-danger p-0 clear-all"
+                                                    data-target="method-group">
+                                                Clear All
+                                            </button>
+                                        </div>
+                                         <hr class="my-2">
+                                         <div id="filter-method-group">
+
+                                         </div>
+                                    </div>
+                                </div>
+                                <div class="dropdown flex-fill">
+                                    <button class="btn btn-outline-secondary dropdown-toggle w-100"
+                                            type="button"
+                                            data-toggle="dropdown">
+                                        Filter Test Level
+                                    </button>
+                                    <div class="dropdown-menu p-3">
+                                        <!-- ACTION -->
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-link p-0 select-all"
+                                                    data-target="test-level">
+                                                Select All
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-link text-danger p-0 clear-all"
+                                                    data-target="test-level">
+                                                Clear All
+                                            </button>
+                                        </div>
+                                        <hr class="my-2">
+                                        <div id="filter-test-level">
+
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="dropdown flex-fill">
+                                    <button class="btn btn-outline-secondary dropdown-toggle w-100"
+                                            type="button"
+                                            data-toggle="dropdown">
+                                        Filter Composition
+                                    </button>
+                                    <div class="dropdown-menu p-3">
+                                        <!-- ACTION -->
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-link p-0 select-all"
+                                                    data-target="composition">
+                                                Select All
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-link text-danger p-0 clear-all"
+                                                    data-target="composition">
+                                                Clear All
+                                            </button>
+                                        </div>
+                                        <hr class="my-2">
+                                        <div id="filter-composition">
+
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Test Matrix</label>
-                                <select class="form-control select2" name="id_testmatrix" id="id_testmatrix" data-placeholder="Pilih Test Matrix">
-                                    <option selected disabled>Pilih Test Matrix</option>
-                                </select>
-                                <input type="text" name="method_code" id="method_code" value="" class="form-control" hidden>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Title</label>
-                                <input type="text" name="title_row" id="title_row"  value="<?= $this->input->post('method_name')?>" readonly class="form-control"></input>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Measurement</label>
-                                <input type="text" name="measurement_row" id="measurement_row" value="<?= $this->input->post('measurement')?>" readonly class="form-control"></input>
-                            </div>
-                        </div>
-                         <div class="col-md-6" style="display: none;">
-                            <div class="form-group">
-                                <label>Value From</label>
-                                <input type="text" name="value_from_row" id="value_from" value="<?= $this->input->post('value_from')?>" readonly class="form-control">
-                            </div>  
-                        </div>
-                        <div class="col-md-6 " style="display: none;">
-                            <div class="form-group">
-                                <label>Value To</label>
-                                <input type="text" name="value_to_row" id="value_to" value="<?= $this->input->post('value_to')?>" readonly class="form-control">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Test Result Type</label>
-                                <select name="result_type" id="result_type" class="form-control" disabled>
-                                    <option selected disabled>PILIH</option>
-                                    <option value="boolean">Boolean</option>
-                                    <option value="number">Number</option>
-                                    <option value="statement">Statement</option>
-                                    <option value="shrinkage">Shrinkage</option>
-                                    <option value="formaldehyde">Formaldehyde</option>
-                                    <option value="sock">Sock</option>
-                                </select>
-                            </div>
-                        </div>
+                        <!-- ================= TABLE ================= -->
                        
-                        <!---SHRINKAGE--->
-                        <!-- BEFORE WASH -->
-                        <div class="col-md-6 shrinkage">
-                            <div class="form-group">
-                                <label>Before Wash: </label>
-                                <input type="text" name="be_wash" id="be_wash" class="form-control">
-                            </div>
-                        </div>
-                        <!-- WASH 1 -->
-                        <div class="col-md-4 shrinkage">
-                            <label>1. Wash: </label>
-                            <span id="ac_wash_1_display" style="font-weight:bold; margin-left:5px;" hidden></span>
-                            <span id="status_ac_wash_1_display" style="font-weight:bold; margin-left:10px;" onchange="status_shrinkage();"></span>
-                        </div>
-                        <!-- WASH 5 -->
-                        <div class="col-md-4 shrinkage">
-                            <label>5. Wash: </label>
-                            <span id="ac_wash_5_display" style="font-weight:bold; margin-left:5px;" hidden></span>
-                            <span id="status_ac_wash_5_display" style="font-weight:bold; margin-left:10px;" onchange="status_shrinkage();"></span>
-                        </div>
-                        <!-- WASH 15 -->
-                        <div class="col-md-4 shrinkage">
-                            <label>15. Wash: </label>
-                            <span id="ac_wash_15_display" style="font-weight:bold; margin-left:5px;" hidden></span>
-                            <span id="status_ac_wash_15_display" style="font-weight:bold; margin-left:10px;" onchange="status_shrinkage();"></span>
-                        </div>
-                        <!-- GLOBAL STATUS -->
-                        <div class="col-md-4" hidden>
-                            <label>Status Global: </label>
-                            <span id="status_passfail_display" style="font-weight:bold; color:blue; margin-left:5px;"></span>
-  
-                        </div>
-                        <!---AFTER WASH 1--->
-                        <div class="col-md-2 shrinkage">
-                            <div class="form-group">
-                                <label>After Wash</label>
-                                <input type="text" name="af_wash_1" id="af_wash_1" class="form-control">
-                            </div>
-                        </div>
-                        <div class="col-md-2 shrinkage">
-                            <div class="form-group">
-                                <label>Actual Shrinkage</label>
-                                <input type="text" name="ac_wash_1" id="ac_wash_1" class="form-control" readonly>
-                            </div>
-                        </div>
-                        <!---AFTER WASH 5--->
-                        <div class="col-md-2 shrinkage">
-                            <div class="form-group">
-                                <label>After Wash</label>
-                                <input type="text" name="af_wash_5" id="af_wash_5" class="form-control">
-                            </div>
-                        </div>
-                         <div class="col-md-2 shrinkage">
-                            <div class="form-group">
-                                <label>Actual Shrinkage</label>
-                                <input type="text" name="ac_wash_5" id="ac_wash_5" class="form-control" readonly>
-                            </div>
-                        </div>
-                        <!---AFTER WASH 15--->
-                         <div class="col-md-2 shrinkage">
-                            <div class="form-group">
-                                <label>After Wash</label>
-                                <input type="text" name="af_wash_15" id="af_wash_15" class="form-control">
-                            </div>
-                        </div>
-                        <div class="col-md-2 shrinkage">
-                            <div class="form-group">
-                                <label>Actual Shrinkage</label>
-                                <input type="text" name="ac_wash_15" id="ac_wash_15" class="form-control" readonly>
-                            </div>
-                        </div>
-                        <!---END SHRINKAGE--->
-                        <div class="col-md-6" id="div_statement" style="display: none;">
-                            <div class="form-group">
-                                <label>Statement</label>
-                                <textarea type="text" name="statement" id="statement" value="<?= $this->input->post('statement')?>" readonly class="form-control"></textarea>
-                            </div>                       
-                        </div>
-                        <div class="col-md-3" id="div_statement_status" style="display: none;">
-                            <div class="form-group">
-                                <label>Result</label>
-                                   <select name="status_statement_row" id="status_statement" class="form-control status_statement">
-                                    <option selected disabled>Pilih</option>
-                                    <option value="Accepted">Accepted</option>
-                                    <option value="Rejected">Rejected</option>
-                                    <option value="Not Available">Not Available</option>
-                                </select>
-                            </div>                         
-                        </div>
-                        <div class="col-md-3" id="div_value_from" style="display: none;">
-                            <div class="form-group">
-                                <label>Value From</label>
-                                <input type="text" name="value_from_row" id="value_from_row" value="<?= $this->input->post('value_from')?>" readonly class="form-control">
-                            </div>
-                        </div>
-                        <div class="col-md-3" id="div_value_to" style="display: none;">
-                            <div class="form-group">
-                                <label>Value To</label>
-                                <input type="text" name="value_to_row" id="value_to_row" value="<?= $this->input->post('value_to')?>" readonly class="form-control">
-                            </div>
-                        </div>
-                        <div class="col-md-3" id="div_result" style="display: none;">
-                            <div class="form-group">
-                                <label>Result</label>
-                                <input type="text" name="result_row" id="result" value="" readonly class="form-control" >
-                            </div>
-                        </div> 
-                        <div class="col-md-3" id="div_passfail" style="display: none;">
-                            <div class="form-group">
-                                <label>Result / Before Wash</label>
-                                <select name="result_passfail_row" id="result_passfail" class="form-control result_passfail" onchange="status_boolean(this);">
-                                    <option selected disabled>Pilih</option>
-                                    <option value="Accepted">Accepted</option>
-                                    <option value="Rejected">Rejected</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3" id="div_passfail_1" style="display: none;">
-                            <div class="form-group">
-                                <label>Result / 1. Wash</label>
-                                <select name="state_1" id="result_passfail1" class="form-control result_passfail1" onchange="status_boolean(this);">
-                                    <option selected disabled>Pilih</option>
-                                    <option value="Accepted">Accepted</option>
-                                    <option value="Rejected">Rejected</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3" id="div_status_statement" style="display: none;">
-                            <div class="form-group">
-                                <label>Result</label>
-                                <select name="state_2"  class="form-control result_passfail1" onchange="status_boolean(this);">
-                                    <option selected disabled>Pilih</option>
-                                    <option value="Accepted">Accepted</option>
-                                    <option value="Rejected">Rejected</option>
-                                </select>
-                            </div>
-                        </div>             
-                        <div class="col-md-3" id="div_comment" style="display: none;">
-                            <div class="form-group">
-                                <label>Comment</label>
-                                <input type="text" name="comment" id="comment" value="" class="form-control" >
-                            </div>
-                        </div>
-                        <!---FORMALDEHYDE---->
-                        <div class="col-md-2 formaldehyde" style="display: none;">
-                            <label>The mass of the test specimens</label>
-                            <input type="text" name="mass_of" class="form-control">
-                        </div> 
-                        <div class="col-md-2 formaldehyde" style="display: none;">
-                            <label>The range of the calibration graph</label>
-                            <input type="text" name="range_graph_1" class="form-control" placeholder="ex: CONCENTRATION 15-600 PPM">
-                            <input type="text" name="range_graph_2" class="form-control" placeholder="ex: ABS 0.026 - 0.804">
-                        </div> 
-                        <div class="col-md-1 formaldehyde" style="display: none;">
-                            <label>Result</label>
-                            <input type="text" name="result_formaldehyde" class="form-control" oninput="status_formaldehyde_result()">
-                        </div> 
-                        <!---SOCK--->
-                         <div class="col-md-3 sock" style="display: none;">
-                            <div class="form-group">
-                                <label>nahmboard number</label>
-                                <input type="text" name="nahm_sock" id="nahm_sock" class="form-control">
-                            </div>
-                        </div>
-                        <div class="col-md-3 sock" style="display: none;">
-                            <div class="form-group">
-                                <label>Result</label>
-                                <select name="result_sock" id="result_sock" class="form-control result_sock" onchange="updateStatusSock(this);">
-                                    <option selected disabled>Pilih</option>
-                                    <option value="Accepted">Accepted</option>
-                                    <option value="Rejected">Rejected</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3 sock" style="display: none;">
-                            <div class="form-group">
-                                <label>Comment</label>
-                                <input type="text" name="comment_sock" id="comment_sock" class="form-control">
-                            </div>
-                        </div>
-                        <input type="text" id="status_sock" name="status_sock" class="status_row">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                     <tr>
+                                        <th width="5%">No</th>
+                                        <th width="10%">Test Method</th>
+                                        <th width="15%">Method Name</th>
+                                        <th width="20%">Requirement</th>
+                                        <th width="15%">Result</th>
+                                        <th width="20%">Statement / Comment</th>
+                                        <th width="10%">Status</th>
+                                    </tr>
+                                </thead>
+                                 <?php $no = 1; ?>
+                                <?php foreach ($matrix_group as $type => $rows): ?>
 
-                        <input type="hidden" id="status_formaldehyde" name="status_formaldehyde" class="status_row">
+                                <tbody class="type-group" data-type="<?= htmlspecialchars($type) ?>">
 
-                        <input type="hidden" id="status_numeric" name="status_numeric" class="status_row">
+                                <tr style="background:#e9ecef;font-weight:bold;">
+                                    <td colspan="7"><?= strtoupper(htmlspecialchars($type)) ?></td>
+                                </tr>
 
-                        <input type="hidden" id="status_shrinkage" name="status_shrinkage" class="status_row">
+                                <?php foreach ($rows as $r): ?>
+                                <tr
+                                    data-type="<?= htmlspecialchars($type) ?>"
+                                    data-method-group="<?= htmlspecialchars($r['id_methodgroup']) ?>"
+                                    data-test-level="<?= htmlspecialchars($r['test_level']) ?>"
+                                    data-composition="<?= htmlspecialchars($r['composition']) ?>"
+                                    data-result-type="<?= htmlspecialchars(strtolower($r['result_type'])) ?>"
+                                    data-value-from="<?= htmlspecialchars($r['value_from']) ?>"
+                                    data-value-to="<?= htmlspecialchars($r['value_to']) ?>"
+                                >
+                                    <!-- NO -->
+                                    <td><?= $no++ ?></td>
 
-                        <input type="hidden" id="status_boolean" name="status_boolean" class="status_row">
+                                    <!-- TEST METHOD -->
+                                    <td><?= htmlspecialchars($r['method_code']) ?></td>
 
-                        <input type="hidden" id="status_statement_result" name="status_statement_result" class="status_row">
+                                    <!-- METHOD NAME -->
+                                    <td><?= htmlspecialchars($r['title']) ?></td>
 
-                        <div class="col-md-1">
-                            <label>&nbsp;</label>
-                            <button disabled type="button" class="btn btn-block" style="background-color: #001f3f; color: white;" id="tambah"><i class="fa fa-plus"></i></button>
-                        </div>
-                        </div>
+                                    <!-- REQUIREMENT -->
+                                    <td>
+                                        <?php if (!empty($r['remarks']) && $r['remarks'] !== '-'): ?>
+                                            <?= htmlspecialchars($r['remarks']) ?><br>
+                                        <?php endif; ?>
+
+                                        <?php if (!empty($r['value_from']) && $r['value_from'] !== '-'): ?>
+                                            <b>Value From:</b> <?= htmlspecialchars($r['value_from']) ?><br>
+                                        <?php endif; ?>
+
+                                        <?php if (!empty($r['value_to']) && $r['value_to'] !== '-'): ?>
+                                            <b>Value To:</b> <?= htmlspecialchars($r['value_to']) ?>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <!-- RESULT -->
+                                    <td class="result-cell"></td>
+
+                                    <!-- COMMENT (FREE TEXT) -->
+                                    <td>
+                                        <input type="text" class="form-control comment-input">
+                                    </td>
+
+                                    <!-- STATUS -->
+                                    <td class="status-cell fw-bold"></td>
+
+                                    <!-- HIDDEN FOR SUBMIT -->
+                                    <input type="hidden" name="id_testmatrix[]" value="<?= $r['id_testmatrix'] ?>">
+                                    <input type="hidden" name="result[]" class="result-hidden">
+                                    <input type="hidden" name="comment[]" class="comment-hidden">
+                                    <input type="hidden" name="status[]" class="status-hidden">
+
+                                </tr>
+                                <?php endforeach; ?>
+
+                                </tbody>
+                                <?php endforeach; ?>
+                                </table>
                     </div>
                 </div>
                 <div class="collapse show" id="cardKerajangMethod">
                     <div class="col-md-12"><hr>
-                            <div class="form-group">
-                                <div class="table-responsive keranjang_method">                   
-                                    <table id="keranjang_method" class="table table-bordered" style="font-size: 10px;">
-                                        <thead style=" font-weight: bolder;">
-                                            <tr>
-                                                <td hidden>Report No</td>
-                                                <td rowspan="2" width="200px;"><center>Test Method</td>
-                                                <td rowspan="2" width="250px;"><center>Method Name</td>
-                                                <td><center>Test Result</td>
-                                                <td ><center>Comment / Statement</td>
-                                                <td ><center>Status</td>
-                                                <td ><center>Aksi</td>
-                                            </tr>
-                                            <tr hidden>
-                                                <td width="130px;"><center>Result</td>
-                                                <td width="130px;"><center>Before Wash</td>
-                                                <td width="130px;"><center>1. Wash</td>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                        </tbody>
-                                        <tfoot style="text-align:center;" >
-                                            <tr class="tfoot_method">
-                                            <td></td>
-                                            <td colspan="2">
-                                                <input type="hidden" name="report_no_hidden" value="<?= $report_no ?>">
-                                            </td> 
-                                            <td><b style="text-align:right;"><strong>Result Status </strong></td>
-                                            <td id="result_status_text"></td>
-                                            <td>
-                                                <input type="text" name="result_status" id="result_status" value="<?= $this->input->post('result_status')?>">
-                                                <input type="text" name="id_reportmethod" id="id_reportmethod" value="<?php echo $kodemethod; ?>" hidden>
-                                            </td>
-                                            </tr> 
-                                        </tfoot>
-                                    </table>    
-                                </div>
-                            </div>
+                           
                     </div>
                 </div> 
                 <div class="card-footer">
@@ -1306,67 +1204,7 @@
                 </div>
             </div>
         </form>
-    </div>
-     <!---- MODAL DATA ORDER ---->
-    <div id="ModalOption" class="modal" role="dialog">
-        <div class="modal-dialog modal-lg">
-        <!--modal content-->
-            <div class="modal-content">
-                <div class="modal-header">
-                   <span style="font-size: 14px; font-weight:bold;">Method List</span>
-                </div>
-                <div class="modal-body">
-                    <style>
-                    .pagination{
-                        float:right;
-                    }
-                    .dataTables_filter{
-                        float: right;
-                    }
-                    </style>
-                    <div class="card-body">
-                            <div class="table-responsive">
-                                <table id="example2" class="table table-bordered table-striped text-nowrap">
-                                    <thead>
-                                        <tr>
-                                            <th width="1%"><center>#</th>
-                                            <th><center>Test Method Code</th>
-                                            <th><center>Measurement</th>
-                                            <th><center>Dry Process</th>
-                                            <th><center>Value From</th>
-                                            <th><center>Value To </th>
-                                            <th><center>UOM</th>
-                                            <th><center>Pass/Fail</th>
-                                            <th hidden><center>Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                            $no = 1;
-                                            foreach($testmatrix as $u){
-                                        ?>
-                                        <tr>
-                                            <td><?= $no++ ?></td>
-                                            <td><?= $u->method_code?></td>
-                                            <td><?= $u->measurement?><br><?= $u->title?></td>
-                                            <td><?= $u->dry ?></td>
-                                            <td><?= $u->value_from?></td>
-                                            <td><?= $u->value_to?></td>
-                                            <td><?= $u->uom ?></td>
-                                            <td><?= $u->pass_fail ?></td>
-                                            <td hidden>
-                                                <a href="#" class="btn btn-outline-primary"><i class="fa fa-plus"></i></a>
-                                            </td>
-                                        </tr>
-                                        <?php } ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>              
+    </div>         
 </section>
 
                

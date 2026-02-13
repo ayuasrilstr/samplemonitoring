@@ -220,34 +220,34 @@
                                                 <input type="text" name="code_of_fabric" id="code_of_fabric" class="form-control" value="<?php echo $penerimaan['data']->code_of_fabric?>" readonly>
                                             </div>
                                         </div>
-                                        <div class="col-md-12">
+                                     <div class="col-md-12">
                                             <div class="form-group">
                                                 <label>Initial Width (LA)</label>
-                                                <input type="text" name="initial_width" class="form-control" value="<?php echo $penerimaan['data']->initial_width ?>">
+                                                <input type="varchar" name="initial_width" id="initial_width" class="form-control" value="<?php echo $penerimaan['data']->initial_width ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-12">
                                             <div class="form-group">
                                                 <label>Request Width (LP)</label>
-                                                <input type="text" name="request_width" class="form-control" value="<?php echo $penerimaan['data']->request_width?>">
+                                                <input type="varchar" name="request_width" id="request_width" class="form-control" value="<?php echo $penerimaan['data']->request_width?>">
                                             </div>
                                         </div>
                                         <div class="col-md-12">
                                             <div class="form-group">
                                                 <label>Finished Width (LJ)</label>
-                                                <input type="text" name="finished_width" class="form-control" value="<?php echo $penerimaan['data']->finished_width ?>">
+                                                <input type="varchar" name="finished_width" id="finished_width" class="form-control" value="<?php echo $penerimaan['data']->finished_width ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-12">
                                             <div class="form-group">
                                                 <label>Request Fabric Weight</label>
-                                                <input type="text" name="request_fabric" class="form-control" value="<?php echo $penerimaan['data']->request_fabric ?>">
+                                                <input type="varchar" name="request_fabric" id="request_fabric" class="form-control" value="<?php echo $penerimaan['data']->request_fabric ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-12">
                                             <div class="form-group">
                                                 <label>Finished Fabric Weight</label>
-                                                <input type="text" name="finish_fabric" class="form-control" value="<?php echo $penerimaan['data']->finish_fabric ?>">
+                                                <input type="varchar" name="finish_fabric" id="finish_fabric" class="form-control" value="<?php echo $penerimaan['data']->finish_fabric ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-12">
@@ -1090,6 +1090,15 @@
                                 </div>      
                             </div>
                         </form> 
+                 <script>
+                       const form = document.querySelector('form[action*="editaksi_penerimaan"]');
+                       const textInputs = form.querySelectorAll('input[type="text"]');
+                            textInputs.forEach(input => {
+                       input.addEventListener('input', () => {
+                       input.value = input.value.toUpperCase();
+                           });
+                       });
+                </script>
             </div>
 		</div>
 	</div>

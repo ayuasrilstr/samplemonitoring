@@ -202,7 +202,11 @@ h5 {
                                                 <td><?= $u->statement?></td>
                                                 <td>
                                                     <a href="<?=site_url('testMatrix/editMatrix/').$u->id_testmatrix?>" class="btn btn-outline-info btn-sm edit"><i class="fa fa-edit" ></i></a>
-                                                    <a href="<?=site_url('testMatrix/hapusMatrix/').$u->id_testmatrix?>" onclick="return confirm('Apakah Anda Yakin Ingin Menghapus <?php echo $u->method_code?>?');" class="btn btn-outline-danger btn-sm remove"><i class="fa fa-trash"></i></a>
+                                                    <a href="<?= site_url('testMatrix/hapus_testmatrix/'.$u->id_testmatrix) ?>"
+                                                          onclick="return confirm('Apakah Anda yakin ingin menghapus <?= $u->method_code ?> ?');"
+                                                    class="btn btn-outline-danger btn-sm remove">
+                                                    <i class="fa fa-trash"></i>
+                                                    </a>
                                                 </td>
                                             </tr>
                                             <?php } ?>

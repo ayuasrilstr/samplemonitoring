@@ -158,7 +158,7 @@
                                 <div class="col-md-6 pl-pr-1">
                                     <div class="form-group">
                                         <label>Measurement</label>
-                                        <input name="measurement"  class="form-control" value="<?php echo $u->measurement ?>" required>
+                                        <input name="measurement"  class="form-control" value="<?php echo $u->measurement ?>">
                                     </div>
                                 </div>
                                 <div class="col-md-3 pl-pr-1">
@@ -176,7 +176,7 @@
                                     <div class="form-group">
                                         <label>Dry Process</label>
                                         <?php $dry = $u->dry; ?>
-                                        <select name="dry" id="dry" class="form-control" required> 
+                                        <select name="dry" id="dry" class="form-control"> 
                                         <option selected disabled>Select</option>
                                         <option <?php echo ($dry == 'Line Dry/Flat Dry') ? "selected": "" ?>>Line Dry/Flat Dry</option>
                                         <option <?php echo ($dry == 'Tumble Dry') ? "selected": "" ?>>Tumble Dry</option>
@@ -199,7 +199,7 @@
                                     <div class="col-md-3 pl-pr-1">
                                         <div class="form-group">
                                             <label>Product Type</label>
-                                            <select name="product_type[]" class="form-control select2" multiple="multiple" required>
+                                            <select name="product_type[]" id="product_type" class="form-control selectpicker" multiple="multiple" required>
                                                     <option disabled>Select</option>
                                                     <?php 
                                                         $cats = explode(',', $u->product_type);
@@ -215,7 +215,7 @@
                                     <div class="col-md-3 pl-pr-1">
                                         <div class="form-group">
                                             <label>Test Level</label>
-                                            <input name="test_level"  class="form-control" value="<?php echo $u->test_level ?>" required>
+                                            <input name="test_level"  class="form-control" value="<?php echo $u->test_level ?>">
                                         </div>
                                     </div>
                                     <div class="col-md-3 pl-pr-1">
@@ -236,7 +236,7 @@
                                             <div class="form-group">
                                                 <label>Fabric Tech</label>
                                                 <?php $fabric = $u->fabric_tech; ?>
-                                                <select name="fabric_tech" class="form-control" required>
+                                                <select name="fabric_tech" class="form-control">
                                                     <option selected disabled>Select</option>
                                                     <option <?php echo ($fabric == 'K') ? "selected": "" ?>>K : Knit</option>
                                                     <option <?php echo ($fabric == 'W') ? "selected": "" ?>>W : Woven</option>
@@ -249,7 +249,7 @@
                                         <div class="form-group">
                                             <label>Composition</label>
                                             <?php $composition = $u->composition ?>
-                                            <select name="composition" class="form-control" required>
+                                            <select name="composition" class="form-control">
                                                 <option selected disabled>Select</option>
                                                 <option <?php echo ($composition == 'N') ? "selected": "" ?>>N: Natural</option>
                                                 <option <?php echo ($composition == 'S') ? "selected": "" ?>>S: Synthetic</option>
@@ -304,7 +304,7 @@
                                     <div class="col-md-12 pl-pr-1">
                                         <div class="form-group">
                                             <label>Statement</label>
-                                           <textarea id="statementMatrix" name="statement" class="form-control">
+                                            <textarea id="statementMatrix" name="statement" class="form-control" disabled>
                                                 <?= isset($u->statement) ? $u->statement : '' ?>
                                             </textarea>
                                         </div>

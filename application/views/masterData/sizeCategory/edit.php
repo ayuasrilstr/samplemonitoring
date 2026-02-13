@@ -4,13 +4,13 @@
           <div class="col-sm-6">
                 <ol class="breadcrumb float-sm-left">
                 <li class="breadcrumb-item"><a href="#">Master Data</a></li>
-                <li class="breadcrumb-item active">Edit OEKO-TEX</li>
+                <li class="breadcrumb-item active">Edit Size Category</li>
                 </ol>
           </div>
         </div>
       </div>
 </div>
-<section class="content" id="content "data-url="<?= base_url('c_transaksi') ?>">
+<section class="content" id="content" data-url="<?= base_url('c_transaksi') ?>">
     <div class="container-fluid">
         <div class="row">
           <div class="col-md-10" style="padding-bottom: 1%;">
@@ -25,14 +25,14 @@
                         <h3 class="card-title"></h3>
                     </div>
                     <?php foreach($edit as $u): ?>
-                    <form action = "<?php echo site_url('c_transaksi/editaksi_sizecatogory'); ?>" method="post">
+                     <form action = "<?php echo site_url('c_transaksi/editaksi_sizecategory'); ?>" method="post">
                       <div class="card-body">    
                         <div class="col-md-12">
                           <div class="form-group">
                             <label>
-                                Size Cateogory
+                               Size Category
                             </label>
-                            <input clas="form-contorl" name="id_age" type="text" value="<?= $u->id_age?>" hidden>
+                            <input class="form-control" name="id_age" type="text" value="<?= $u->id_age?>" hidden>
                             <input class="form-control" name="age" type="text" value="<?= $u->age ?>">
                           </div>
                         </div>	
@@ -50,8 +50,8 @@
                               </ol>
                           </div>      
                       </div>
+                      </form>
                       <?php endforeach ?>
-                    </form>
                   </div>
             </div>
 		</div>

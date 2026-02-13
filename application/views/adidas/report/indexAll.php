@@ -252,7 +252,7 @@ body.modal-open {
                                 
                                 <th>Aksi</th>
                             </tr>
-                        </thead>
+                    </thead>
                     <tbody id="myTable">
                         <?php 
                             $no = 1; 
@@ -285,6 +285,7 @@ body.modal-open {
                             <td>
                                 <a hidden href="<?= site_url('c_transaksi/report_test_all/') . $row->id_penerimaan.'/'.$row->report_no ?>" class="btn btn-outline-info btn-sm button2" target="_blank"><i class="fa fa-file-alt"></i></a>
                                 <a href="<?= site_url('c_transaksi/index_rilis/') . $row->id_penerimaan.'/'.$row->report_no ?>" class="btn btn-outline-info btn-sm button2">Release</a>                 
+                                
                             </td>
                         </tr>
                         <?php } ?>

@@ -208,10 +208,10 @@
                                             <label>Order Number / PO - LCO</label>
                                             <select name="order_number" id="order_number" class="form-control select2" style="width: 100%;">
                                                 <option selected disabled value="">--- Select Order Number ---</option>
+                                                <option value="other">Other</option>
                                                 <?php foreach($order as $u): ?>
                                                     <option value="<?= $u->order_number ?>"><?= $u->order_number ?></option>
                                                 <?php endforeach ?>
-                                                <option value="other">Other</option>
                                             </select>
                                         </div>
                                          <input type="text"
@@ -220,6 +220,7 @@
                                                     class="form-control"
                                                     style="display:none;"
                                                     placeholder="Masukkan order number lainnya...">
+                                                </input>
                                     </div>
                                     <div class="col-md-12">
                                         <div class="form-group">
@@ -227,34 +228,34 @@
                                             <input type="text" value="" name="code_of_fabric" id="code_of_fabric" class="form-control" readonly>
                                         </div>
                                     </div>
-                                    <div class="col-md-12">
+                                      <div class="col-md-12">
                                         <div class="form-group">
                                             <label>Initial Width (LA)</label>
-                                            <input type="text" name="initial_width" id="initial_width" class="form-control">
+                                            <input type="varchar" name="initial_width" id="initial_width" class="form-control">
                                         </div>
                                     </div>
                                     <div class="col-md-12">
                                         <div class="form-group">
                                             <label>Request Width (LP)</label>
-                                            <input type="text" name="request_width" id="request_width" class="form-control">
+                                            <input type="varchar" name="request_width" id="request_width" class="form-control">
                                         </div>
                                     </div>
                                     <div class="col-md-12">
                                         <div class="form-group">
                                             <label>Finished Width (LJ)</label>
-                                            <input type="text" name="finished_width" id="finished_width" class="form-control">
+                                            <input type="varchar" name="finished_width" id="finished_width" class="form-control">
                                         </div>
                                     </div>
                                     <div class="col-md-12">
                                         <div class="form-group">
                                             <label>Request Fabric Weight</label>
-                                            <input type="text" name="request_fabric" id="request_fabric" class="form-control">
+                                            <input type="varchar" name="request_fabric" id="request_fabric" class="form-control">
                                         </div>
                                     </div>
                                     <div class="col-md-12">
                                         <div class="form-group">
                                             <label>Finished Fabric Weight</label>
-                                            <input type="text" name="finish_fabric" id="initial_width" class="form-control">
+                                            <input type="varchar" name="finish_fabric" id="finish_fabric" class="form-control">
                                         </div>
                                     </div>
                                     <div class="col-md-12">
@@ -622,360 +623,55 @@
                                 <div class="col-md-12"><br>
                                     <h4>Test Required (please give checklist)<hr></h4>
                                 </div>
-                                    <div class="col-md-4">
-                                        
-                                            <div class=" ">
-                                                <label>1.</label>
-                                                <input type="checkbox" name ="test_required[]" id="household" value="Color Fastness to House Hold Laundering">
-                                                <label for="household">Color Fastness to House Hold Laundering</label>
-                                            </div>
-                                            <div class=" ">
-                                                <label>2.</label>
-                                                <input type="checkbox" name="test_required[]" id="water" value="Color Fastness to Water">
-                                                <label for="water">Color Fastness to Water*)</label>
-                                            </div>
-                                            <div class=" ">
-                                                <label>3.</label>
-                                                <input type="checkbox" name="test_required[]" id="perspiration" value="Color Fastness to Perspiration">
-                                                <label for="perspiration">Color Fastness to Perspiration*)</label>
-                                            </div>
-                                            <div class=" ">
-                                                <label>4.</label>
-                                                <input type="checkbox" name="test_required[]" id="washing" value="Color Fastness to Washing">
-                                                <label for="washing">Color Fastness to Washing*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>5.</label>
-                                                <input type="checkbox" name="test_required[]" id="rubbing" value="Color Fastness to Rubbing">
-                                                <label for="rubbing">Color Fastness to Rubbing*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>6.</label>
-                                                <input type="checkbox" name="test_required[]" id="lightfastness" value="Color Fastness to Light Fastness">
-                                                <label for="lightfastness">Color Fastness to Light Fastness*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>7.</label>
-                                                <input type="checkbox" name="test_required[]" id="fastnessperspiration" value="Color Fastness to Light Fastness Perspiration">
-                                                <label for="fastnessperspiration">Color Fastness to Light Fastness Perspiration</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>8.</label>
-                                                <input type="checkbox" name="test_required[]" id="phenolicyellowing" value="Color Fastness to Phenolic Yellowing">
-                                                <label for="phenolicyellowing">Color Fastness to Phenolic Yellowing*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>9.</label>
-                                                <input type="checkbox" name="test_required[]" id="saliva" value="Color Fastness to Saliva">
-                                                <label for="saliva">Color Fastness to Saliva*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>10.</label>
-                                                <input type="checkbox" name="test_required[]" id="storage" value="Color Fastness Dye Transfer In Storage">
-                                                <label for="storage">Color Fastness Dye Transfer In Storage*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>11.</label>
-                                                <input type="checkbox" name="test_required[]" id="migration" value="Color Migration Fastness">
-                                                <label for="migration">Color Migration Fastness</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>12.</label>
-                                                <input type="checkbox" name="test_required[]" id="oven" value="Color Migration Oven Test">
-                                                <label for="oven">Color Migration Oven Test</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>13.</label>
-                                                <input type="checkbox" name="test_required[]" id="chlorinated" value="Color Fastness to Chlorinated Water">
-                                                <label for="chlorinated">Color Fastness to Chlorinated Water</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>14.</label>
-                                                <input type="checkbox" name="test_required[]" id="seawater" value="Color Fastness to Sea Water">
-                                                <label for="seawater">Color Fastness to Sea Water</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>15.</label>
-                                                <input type="checkbox" name="test_required[]" id="chlorine" value="Color Fastness to Chlorine Bleach">
-                                                <label for="chlorine">Color Fastness to Chlorine Bleach</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>16.</label>
-                                                <input type="checkbox" name="test_required[]" id="non-chlorine" value="Color Fastness to Non-Chlorine Bleach">
-                                                <label for="non-chlorine">Color Fastness to Non-Chlorine Bleach</label>
-                                            </div>
-                                            <div class=" ">
-                                                <label>17.</label>
-                                                <input type="checkbox" name="test_required[]" id="laundering" value="Dimensional Stability to Laundering">
-                                                <label for="laundering">Dimensional Stability to Laundering*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>18.</label>
-                                                <input type="checkbox" name="test_required[]" id="appereancechange" value="Appereance Change After Laundering">
-                                                <label for="appereancechange">Appereance Change After Laundering</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>19.</label>
-                                                <input type="checkbox" name="test_required[]" id="spirality" value="Spirality">
-                                                <label for="spirality">Spirality*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>20.</label>
-                                                <input type="checkbox" name="test_required[]" id="durability" value="Durability Test">
-                                                <label for="durability">Durability Test</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>21.</label>
-                                                <input type="checkbox" name="test_required[]" id="wearingtest" value="Wearing Test">
-                                                <label for="wearingtest">Wearing Test</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>22.</label>
-                                                <input type="checkbox" name="test_required[]" id="cuttable" value="Cuttable Width">
-                                                <label for="cuttable">Cuttable Width</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>23.</label>
-                                                <input type="checkbox" name="test_required[]" id="fabricweight" value="Fabric Weight">
-                                                <label for="fabricweight">Fabric Weight</label>
-                                            </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <div class=" ">
-                                            <label>24.</label>
-                                                <input type="checkbox" name="test_required[]" id="productweigth" value="Product Weight">
-                                                <label for="productweight">Product Weight</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>25.</label>
-                                                <input type="checkbox" name="test_required[]" id="pieceweight" value="Piece Weight">
-                                                <label for="pieceweight">Piece Weight</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>26.</label>
-                                                <input type="checkbox" name="test_required[]" id="bow" value="Bow and Skew">
-                                                <label for="bow">Bow and Skew</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>27.</label>
-                                                <input type="checkbox" name="test_required[]" id="shrinkage" value="Heat Shrinkage">
-                                                <label for="shrinkage">Heat Shrinkage</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>28.</label>
-                                                <input type="checkbox" name="test_required[]" id="flammability" value="Flammability">
-                                                <label for="flammability">Flammability</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>29.</label>
-                                                <input type="checkbox" name="test_required[]" id="elongation" value="Elongation & Recovery">
-                                                <label for="elongation">Elongation & Recovery</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>30.</label>
-                                                <input type="checkbox" name="test_required[]" id="fiber" value="Fibre/Fuzz">
-                                                <label for="fiber">Fibre/Fuzz</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>31.</label>
-                                                <input type="checkbox" name="test_required[]" id="ici" value="ICI Pilling Box">
-                                                <label for="ici">ICI Pilling Box*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>32.</label>
-                                                <input type="checkbox" name="test_required[]" id="martindale" value="Martindale Pilling">
-                                                <label for="martindale">Martindale Pilling*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>33.</label>
-                                                <input type="checkbox" name="test_required[]" id="tumble" value="Random Tumble Pilling">
-                                                <label for="tumble">Random Tumble Pilling</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>34.</label>
-                                                <input type="checkbox" name="test_required[]" id="snagging" value="Snagging (Snag Pod)">
-                                                <label for="snagging">Snagging (Snag Pod)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>35.</label>
-                                                <input type="checkbox" name="test_required[]" id="abrasion" value="Abrasion Resistance">
-                                                <label for="abrasion">Abrasion Resistance*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>36.</label>
-                                                <input type="checkbox" name="test_required[]" id="abrasionsock" value="Abrasion Sock">
-                                                <label for="abrasionsock">Abrasion Sock</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>37.</label>    
-                                                <input type="checkbox" name="test_required[]" id="pnematic" value="Bursting Pnematic">
-                                                <label for="pnematic">Bursting Pnematic*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>38.</label>
-                                                <input type="checkbox" name="test_required[]" id="Hydraulic" value="Bursting Hydraulic">
-                                                <label for="Hydraulic">Bursting Hydraulic</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>39.</label>
-                                                <input type="checkbox" name="test_required[]" id="Burst" value="Ball Burst">
-                                                <label for="Burst">Ball Burst</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>40.</label>
-                                                <input type="checkbox" name="test_required[]" id="textile" value="Textile Material Thickness Measurement">
-                                                <label for="textile">Textile Material Thickness
-                                                Measurement</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>41.</label>
-                                                <input type="checkbox" name="test_required[]" id="odour" value="Odour">
-                                                <label for="odour">Odour</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>42.</label>
-                                                <input type="checkbox" name="test_required[]" id="moisture" value="Moisture Content">
-                                                <label for="moisture">Moisture Content</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>43.</label>
-                                                <input type="checkbox" name="test_required[]" id="acceleratedageing" value="Accelerated Ageing by Hydrolysis">
-                                                <label for="acceleratedageing">Accelerated Ageing by Hydrolysis</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>44.</label>
-                                                <input type="checkbox" name="test_required[]" id="residue" value="Residue & Ageing Test for Sticker">
-                                                <label for="residue">Residue & Ageing Test for Sticker</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>45.</label>
-                                                <input type="checkbox" name="test_required[]" id="force" value="Pull of Force">
-                                                <label for="force">Pull of Force</label>
-                                            </div>
+                                <div class="row">
+                                    <?php $no = 1; ?>
+                                    <?php $totalCol = count($test_required_columns); ?>
+                                    <?php $i = 0; ?>
+                                    <?php foreach($test_required_columns as $col){ ?>
+                                        <?php $i++; ?>
+                                        <div class="col-md-4">
+
+                                            <?php foreach($col as $row){ ?>
+
+                                                <?php 
+                                                $id = strtolower(str_replace(' ','_',$row['test_required']));
+                                                ?>
+
+                                                <div style="margin-bottom:5px;">
+                                                    <label><?= $no ?>.</label>
+
+                                                    <input type="checkbox"
+                                                        name="test_required[]"
+                                                        id="<?= $id ?>"
+                                                        value="<?= $row['test_required'] ?>">
+
+                                                    <label for="<?= $id ?>">
+                                                        <?= $row['test_required'] ?>
+                                                    </label>
+                                                </div>
+
+                                                <?php $no++; ?>
+
+                                            <?php } ?>
+                                            <?php if($i == $totalCol){ ?>
+
+                                                <div style="margin-top:10px;">
+                                                    <span style="font-weight:bold;">
+                                                        <i>*)Accredited ISO/IEC 17025</i>
+                                                    </span>
+                                                    <hr>
+                                                </div>
+
+                                                <div>
+                                                    <label>Other Test ( Please specify ) :</label>
+                                                    <input type="text" name="test_required[]" class="form-control">
+                                                </div>
+
+                                            <?php } ?>
+
                                         </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <div class=" ">
-                                            <label>46.</label>
-                                                <input type="checkbox" name="test_required[]" id="seamstrengthe" value="Seam Slippage/Strength">
-                                                <label for="seamstrength">Seam Slippage/Strength</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>47.</label>
-                                                <input type="checkbox" name="test_required[]" id="seamwoven" value="Seam Slippage of Woven">
-                                                <label for="seamwoven">Seam Slippage of Woven</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>48.</label>
-                                                <input type="checkbox" name="test_required[]" id="tearstrength" value="Tear Strength">
-                                                <label for="tearstrength">Tear Strength</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>49.</label>
-                                                <input type="checkbox" name="test_required[]" id="Yarn" value="Yarn Strength">
-                                                <label for="Yarn">Yarn Strength</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>50.</label>
-                                                <input type="checkbox" name="test_required[]" id="TensileStrength" value="Tensile Strength">
-                                                <label for="TensileStrength">Tensile Strength</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>51.</label>
-                                                <input type="checkbox" name="test_required[]" id="TearForce" value="Tear Force">
-                                                <label for="TearForce">Tear Force</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>52.</label>
-                                                <input type="checkbox" name="test_required[]" id="ThreadCount" value="Thread Count">
-                                                <label for="ThreadCount">Thread Count</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>53.</label>
-                                                <input type="checkbox" name="test_required[]" id="WaterAbsorbency" value="Water Absorbency (Drop Test)">
-                                                <label for="WaterAbsorbency">Water Absorbency (Drop Test)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>54.</label>
-                                                <input type="checkbox" name="test_required[]" id="WickingHeight" value="Wicking Height">
-                                                <label for="WickingHeight">Wicking Height</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>55.</label>
-                                                <input type="checkbox" name="test_required[]" id="Evaporation" value="Evaporation Rate">
-                                                <label for="Evaporation">Evaporation Rate</label>
-                                            </div>
-                                            <div class="">
-                                            <label>56.</label>
-                                                <input type="checkbox" name="test_required[]" id="Repellency" value="Water Repellency (Spray Test)">
-                                                <label for="Repellency">Water Repellency (Spray Test)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>57.</label>
-                                                <input type="checkbox" name="test_required[]" id="Waterproof" value="Waterproof (Hydrostatic)">
-                                                <label for="Waterproof">Waterproof (Hydrostatic)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>58.</label>
-                                                <input type="checkbox" name="test_required[]" id="Permeability" value="Air Permeability">
-                                                <label for="Permeability">Air Permeability</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>59.</label>
-                                                <input type="checkbox" name="test_required[]" id="Content" value="Fibre Content">
-                                                <label for="Content">Fibre Content*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>60.</label>
-                                                <input type="checkbox" name="test_required[]" id="oil" value="Oil Content">
-                                                <label for="oil">Oil Content</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>61.</label>
-                                                <input type="checkbox" name="test_required[]" id="ph" value="pH Value">
-                                                <label for="ph">pH Value*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>62.</label>
-                                                <input type="checkbox" name="test_required[]" id="Formaldehyde" value="Formaldehyde">
-                                                <label for="Formaldehyde">Formaldehyde*)</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>63.</label>
-                                                <input type="checkbox" name="test_required[]" id="nickel" value="Nickel Test">
-                                                <label for="nickel">Nickel Test</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>64.</label>
-                                                <input type="checkbox" name="test_required[]" id="azo" value="Azo Dyes">
-                                                <label for="azo">Azo Dyes</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>65.</label>
-                                                <input type="checkbox" name="test_required[]" id="ap" value="APEO">
-                                                <label for="ap">APEO</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>66.</label>
-                                                <input type="checkbox" name="test_required[]" id="apeo" value="AP">
-                                                <label for="apeo">AP</label>
-                                            </div>
-                                            <div class=" ">
-                                            <label>67.</label>
-                                                <input type="checkbox" name="test_required[]" id="Phthalates" value="Phthalates">
-                                                <label for="Phthalates">Phthalates</label>
-                                            </div>
-                                            <div class=" ">
-                                                <span style="padding-left:15px;font-weight:bold;"><i>*)Accredited ISO/IEC 17025</i></span><hr>
-                                            </div>
-                                            <div class=" ">
-                                                <label>Other Test ( Please specify ) :</label>
-                                                <input type="text" name="test_required[]" class="form-control" >
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <?php } ?>
+                                </div>
                                 <div class="col-md-12"><hr>
                                     <div class="form-group">
                                         <label>Report No</label>
@@ -1005,6 +701,16 @@
                                 </div>      
                             </div>
                         </form>
+                <script>
+                    const form = document.querySelector('form[action*="tambahaksi_penerimaan"]');
+                    const textInputs = form.querySelectorAll('input[type="text"]');
+
+                    textInputs.forEach(input => {
+                        input.addEventListener('input', () => {
+                            input.value = input.value.toUpperCase();
+                        });
+                    });
+                </script>
             </div>
 		</div>
 	</div>

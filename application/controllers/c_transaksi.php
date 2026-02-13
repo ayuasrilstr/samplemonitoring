@@ -49,98 +49,114 @@ public function __construct()
 		$this->load->library('upload');
 	}
 
-	public function proses_kualitas()
-	{
-		$id_penerimaan = $this->input->post('id_penerimaan');
-		$tests         = (array) $this->input->post('test_required');
-		$report_no     = $this->input->post('report_no');
+public function proses_kualitas()
+{
+    $id_penerimaan = $this->input->post('id_penerimaan');
+    $report_no     = $this->input->post('report_no');
+    $tests         = $this->input->post('test_required'); // array
+    $colors        = $this->input->post('color');         // array (optional)
 
-		// -------------------------------------------------
-		// Validasi
-		// -------------------------------------------------
-		if (empty($id_penerimaan) || empty($report_no)) {
-			$this->session->set_flashdata('error', 'Data penerimaan tidak valid');
-			redirect('c_transaksi/index_kualitas');
-			return;
-		}
+    if (empty($id_penerimaan) || empty($report_no) || empty($tests)) {
+        $this->session->set_flashdata('error', 'Test belum dipilih');
+        redirect('c_transaksi/index_kualitas');
+        return;
+    }
 
-		if (empty($tests)) {
-			$this->session->set_flashdata('error', 'Pilih minimal 1 test');
-			redirect('c_transaksi/index_kualitas');
-			return;
-		}
+    $data = [
+        'id_penerimaan' => $id_penerimaan,
+        'report_no'     => $report_no,
+        'test_required' => json_encode(array_values($tests)),
+        'status'        => 'proses',
+        'created_at'    => date('Y-m-d H:i:s')
+    ];
 
-		$this->db->trans_start();
+    // kalau color ada → simpan sebagai JSON
+    if (!empty($colors)) {
+        $data['color'] = json_encode(array_values($colors));
+    }
 
-		// -------------------------------------------------
-		// Ambil kualitas yang VALID
-		// -------------------------------------------------
-		$kualitas = $this->db
-			->select('id_kualitas')
-			->where('id_penerimaan', $id_penerimaan)
-			->where_in('test_required', $tests)
-			->where_in('status', ['belum', 'kembali'])
-			->get('tbl_kualitas')
-			->result_array();
+    $this->db->insert('tbl_kualitas', $data);
 
-		if (empty($kualitas)) {
-			$this->db->trans_rollback();
-			$this->session->set_flashdata('error', 'Tidak ada test yang bisa diproses');
-			redirect('c_transaksi/index_kualitas');
-			return;
-		}
+    if (!$this->db->affected_rows()) {
+        $this->session->set_flashdata('error', 'Gagal memulai test');
+        redirect('c_transaksi/index_kualitas');
+        return;
+    }
 
-		$id_kualitas_array = array_column($kualitas, 'id_kualitas');
+    $id_kualitas = $this->db->insert_id();
 
-		// -------------------------------------------------
-		// UPDATE STATUS (INTI SOLUSI)
-		// -------------------------------------------------
-		$this->db
-			->where_in('id_kualitas', $id_kualitas_array)
-			->update('tbl_kualitas', [
-				'status'    => 'proses',
-				'report_no' => $report_no
-			]);
+    // simpan ke session (kalau masih mau dipakai)
+    $this->session->set_userdata('id_kualitas_array', [$id_kualitas]);
 
-		// Pastikan UPDATE kena
-		if ($this->db->affected_rows() === 0) {
-			$this->db->trans_rollback();
-			$this->session->set_flashdata('error', 'Gagal update status kualitas');
-			redirect('c_transaksi/index_kualitas');
-			return;
-		}
-
-		$this->db->trans_complete();
-
-		// -------------------------------------------------
-		// Simpan ke session utk navigasi test
-		// -------------------------------------------------
-		$this->session->set_userdata('id_kualitas_array', $id_kualitas_array);
-
-		// -------------------------------------------------
-		// Buka test pertama
-		// -------------------------------------------------
-		$first_id = reset($id_kualitas_array);
-
-		redirect(
-			'c_transaksi/index_testResult/' .
-			$report_no . '/' .
-			$first_id . '/' .
-			$id_penerimaan
-		);
-	}
+    // redirect ke halaman test
+    redirect(
+        'c_transaksi/index_testResult/' .
+        $report_no . '/' .
+        $id_kualitas . '/' .
+        $id_penerimaan
+    );
+}
 
 
-	public function get_test_required_dropdown()
-	{
-		$id_penerimaan = $this->input->post('id_penerimaan');
-		$report_no = $this->input->post('report_no');
+public function get_test_required_dropdown()
+{
+    $id_penerimaan = $this->input->post('id_penerimaan');
 
-		$data = $this->m_transaksi
-					->getTestRequiredDropdown($id_penerimaan, $report_no);
+    /** =========================
+     * 1. Ambil dari tbl_penerimaan
+     * ========================= */
+    $row = $this->db
+        ->select('test_required, color')
+        ->from('tbl_penerimaan')
+        ->where('id_penerimaan', $id_penerimaan)
+        ->get()
+        ->row();
 
-		echo json_encode($data);
-	}
+    $tests  = [];
+    $colors = [];
+
+    if ($row) {
+        $tests  = json_decode($row->test_required, true) ?? [];
+        $colors = json_decode($row->color, true) ?? [];
+    }
+
+    /** =========================
+     * 2. Ambil test yang SUDAH ADA di tbl_kualitas
+     * ========================= */
+    $usedTests = [];
+
+    $rows = $this->db
+        ->select('test_required')
+        ->from('tbl_kualitas')
+        ->where('id_penerimaan', $id_penerimaan)
+        ->get()
+        ->result();
+
+    foreach ($rows as $r) {
+        $decoded = json_decode($r->test_required, true);
+
+        if (is_array($decoded)) {
+            $usedTests = array_merge($usedTests, $decoded);
+        } elseif (!empty($r->test_required)) {
+            // kalau suatu saat isinya string
+            $usedTests[] = $r->test_required;
+        }
+    }
+
+    /** =========================
+     * 3. Filter sisa test
+     * ========================= */
+    if (!empty($usedTests)) {
+        $tests = array_values(array_diff($tests, $usedTests));
+    }
+
+    echo json_encode([
+        'tests'  => $tests,
+        'colors' => $colors
+    ]);
+}
+
+
 
 	public function get_order_detail($id_order)
 	{
@@ -908,7 +924,7 @@ public function dashboard_excel()
 	public function edit_supplier($id_supplier)
 	{
 		$where = array('id_supplier' => $id_supplier);
-		$data['edit'] = $this->m_transaksi->getByIdSupplier($where, 'm_supplier')->result();
+		$data['edit'] = $this->m_supplier->getByIdSupplier($where, 'm_supplier')->result();
 		$this->template->load('layout/template','masterData/supplier/edit.php', $data);
 	}
 
@@ -1115,81 +1131,91 @@ public function dashboard_excel()
     // Tambahkan data order untuk dropdown
     $data['order'] = $this->m_transaksi->getAllOrders()->result();
 
+	// TEST REQUIRED
+    $testReq = $this->m_transaksi->getTestRequiredPenerimaan();
+
+    $total = count($testReq);
+    $perColumn = ceil($total / 3);
+
+    $data['test_required_columns'] = array_chunk($testReq, $perColumn);
+
     $this->template->load('layout/template','adidas/penerimaan/tambah.php', $data);
 }
+
 	public function tambahaksi_penerimaan()
 	{
-		// Generate data untuk QR code
+		// ===============================
+		// 1. Generate QR Code Data
+		// ===============================
 		$qrcode_data = $this->_generate_data_qrcode();
 
-		// Mendapatkan data input dari form
-		$color = $this->input->post('color');
+		// ===============================
+		// 2. Ambil & rapikan input array
+		// ===============================
 		$test_required = $this->input->post('test_required');
-		$color_of = $this->input->post('color_of');
+		$color         = $this->input->post('color');
+		$color_of      = $this->input->post('color_of');
+		//$color_of_name = $this->input->post('color_of_name');
 
-		// Filter nilai kosong atau hanya spasi dari test_required
-		if (is_array($test_required)) {
-			$test_required = array_filter($test_required, function($value) {
-				return !empty(trim($value)); // Menghapus nilai kosong atau spasi
-			});
-		}
+		$test_required = is_array($test_required)
+		? array_values(array_filter($test_required, function ($v) {
+			return trim($v) !== '';
+		}))
+		: [];
 
-		// Validasi jika kedua input adalah array dan tidak kosong
-		if (is_array($color) && is_array($test_required) && count($color) > 0 && count($test_required) > 0) {
-		foreach ($color as $i => $c) {
-			$co = $color_of[$i] ?? null; // Ambil sesuai index
-			foreach ($test_required as $t) {
-				$this->m_transaksi->saveKualitas(
-					$t,
-					$c,
-					$co,
-					$this->input->post('id_kualitas'),
-					$this->input->post('color_of_name'),
-					$this->input->post('id_penerimaan'),
-					$this->input->post('report_no')
-				);
-			}
-		}
-		echo "Data Berhasil disimpan";
-	} else {
-		echo "Error: Input Color atau Test Required tidak valid.";
-		return;
-	}
+		$color = is_array($color)
+			? array_values(array_filter($color, function ($v) {
+				return trim($v) !== '';
+			}))
+			: [];
 
-		// Mengambil data file gambar yang diupload
-		$image_upload = $_FILES['image_path'];
+		$color_of = is_array($color_of)
+			? array_values(array_filter($color_of, function ($v) {
+				return trim($v) !== '';
+			}))
+			: [];
 
-		// Cek apakah file ada dan valid
-		if (isset($image_upload) && $image_upload['error'] == 0) {
-			$config = array(
-				'upload_path' => FCPATH . 'images/sample_photo', // Path lengkap
-				'allowed_types' => 'jpg|jpeg|png|gif', // Tipe file yang diperbolehkan
-				'max_size' => 5000, // Ukuran maksimal file dalam KB
-				'file_name' => time() . '_' . $image_upload['name'], // Nama file yang unik
-			);
+		// Encode ke JSON
+		$test_required_json = json_encode($test_required);
+		$color_json         = json_encode($color);
+		$color_of_json      = json_encode ($color_of);
+		//$color_of_name_json = json_encode($color_of_name);
 
-			// Load dan inisialisasi library upload dengan konfigurasi baru
+		// ===============================
+		// 3. Upload Image 
+		// ===============================
+		$image_path = null;
+
+		if (!empty($_FILES['image_path']['name'])) {
+
+			$config = [
+				'upload_path'   => FCPATH . 'images/sample_photo/',
+				'allowed_types' => 'jpg|jpeg|png|gif',
+				'max_size'      => 5000,
+				'file_name'     => time() . '_' . $_FILES['image_path']['name']
+			];
+
 			$this->load->library('upload');
 			$this->upload->initialize($config);
 
-			// Proses upload file
 			if ($this->upload->do_upload('image_path')) {
-				// Mendapatkan nama file yang sudah diupload
 				$uploaded_data = $this->upload->data();
-				$image_path = $uploaded_data['file_name']; // Nama file yang diupload
+				$image_path = $uploaded_data['file_name'];
 			} else {
-				echo "Error: " . $this->upload->display_errors();
+				show_error($this->upload->display_errors());
 				return;
 			}
+
 		} else {
-			//$image_path = null; // Jika tidak ada file yang diupload
-			//$image_path = $this->input->post('old_image_path'); 
 			$image_path = $this->input->post('existing_image_path');
 		}
 
-		// Menyimpan data penerimaan utama
-		$penerimaan = array(
-			'id_penerimaan' => $this->input->post('id_penerimaan'),
+		// ===============================
+		// 4. Simpan ke tbl_penerimaan
+		// ===============================
+		$penerimaan = [
+			'id_penerimaan' => $this->m_transaksi->kodePenerimaan(),
+
 			'applicant' => $this->input->post('applicant'),
 			'department' => $this->input->post('department'),
 			'telephone' => $this->input->post('telephone'),
@@ -1229,6 +1255,13 @@ public function dashboard_excel()
 			'tod' => $this->input->post('tod'),
 			'report_no' => $this->input->post('report_no'),
 			'color_of_name' => $this->input->post('color_of_name'),
+
+			// ✅ SEMUA ARRAY
+			'test_required' => $test_required_json,
+			'color'         => $color_json,
+			'color_of'		=> $color_of_json,
+			//'color_of_name' => $color_of_name_json,
+
 			'compotition' => $this->input->post('compotition'),
 			'stage' => $this->input->post('stage'),
 			'size_category' => $this->input->post('size_category'),
@@ -1239,19 +1272,23 @@ public function dashboard_excel()
 			'drying' => $this->input->post('drying'),
 			'ironing' => $this->input->post('ironing'),
 			'profess' => $this->input->post('profess'),
-			'qrcode_path' => $this->_generate_qrcode($this->input->post('report_no'), $qrcode_data),
-			'qrcode_data' => $qrcode_data,
-			'image_path' => $image_path // Menambahkan path gambar ke dalam data
-			
-		);
 
-		$penerimaan['id_penerimaan'] = $this->m_transaksi->kodePenerimaan();
-		// Menyimpan data penerimaan ke database
+			'qrcode_path' => $this->_generate_qrcode(
+				$this->input->post('report_no'),
+				$qrcode_data
+			),
+			'qrcode_data' => $qrcode_data,
+			'image_path'  => $image_path
+		];
+
 		$this->m_transaksi->insertPenerimaan($penerimaan);
 
-		// Redirect ke halaman penerimaan
+		// ===============================
+		// 5. Redirect
+		// ===============================
 		redirect('c_transaksi/index_penerimaan');
 	}
+
 	
 	public function editaksi_penerimaan()
 	{
@@ -1992,8 +2029,8 @@ public function dashboard_excel()
 	public function index_kualitas()
     {
         // Ambil data kualitas dengan filter
-        //$data['kualitas'] = $this->m_transaksi->joinKualitas()->result();
-		$data['kualitas'] = $this->m_transaksi->joinKualitasByPenerimaan()->result();
+        $data['kualitas'] = $this->m_transaksi->getIndexKualitas()->result();
+		//$data['kualitas'] = $this->m_transaksi->joinKualitasByPenerimaan()->result();
 
 
         // Load tampilan dengan data
@@ -2009,75 +2046,176 @@ public function dashboard_excel()
         $this->template->load('layoutOther/template', 'adidas/kualitas/index.php', $data);
     }
 
-	public function index_testResult($report_no = null, $id_kualitas = null, $id = null)
+	public function getFilterByType()
 	{
-		// ---------------------------------------------------------
-		// Validasi parameter
-		// ---------------------------------------------------------
-		if (empty($report_no) || empty($id_kualitas) || empty($id)) {
-			show_error('Nomor laporan, ID kualitas, atau ID tidak ditemukan.');
+		$types = $this->input->post('types'); // array test_type
+
+		if (empty($types)) {
+			echo json_encode([]);
 			return;
 		}
 
-		// ---------------------------------------------------------
-		// Ambil test_required dari session / fallback ke current id
-		// ---------------------------------------------------------
-		$id_kualitas_array = $this->session->userdata('id_kualitas_array');
-		if (!$id_kualitas_array) {
-			$id_kualitas_array = [$id_kualitas];
+		$this->db->select('id_methodgroup, test_level, composition');
+		$this->db->from('tbl_testmatrix');
+		$this->db->where_in('LOWER(test_type)', $types);
+		$this->db->group_by(['id_methodgroup', 'test_level', 'composition']);
+
+		$rows = $this->db->get()->result();
+
+		$result = [
+			'id_methodgroup' => [],
+			'test_level'   => [],
+			'composition'  => []
+		];
+
+		foreach ($rows as $r) {
+			if ($r->id_methodgroup)
+				$result['id_methodgroup'][$r->id_methodgroup] = true;
+			if ($r->test_level)
+				$result['test_level'][$r->test_level] = true;
+			if ($r->composition)
+				$result['composition'][$r->composition] = true;
 		}
 
-		// Ambil semua row tbl_kualitas sesuai id_kualitas_array
-		$tests_required_rows = $this->db
-			->where_in('id_kualitas', $id_kualitas_array)
-			->get('tbl_kualitas')
-			->result_array();
+		echo json_encode([
+			'id_methodgroup' => array_keys($result['id_methodgroup']),
+			'test_level'   => array_keys($result['test_level']),
+			'composition'  => array_keys($result['composition']),
+		]);
+	}
 
-		// Ambil kolom 'test_required'
-		$test_required_raw = array_column($tests_required_rows, 'test_required');
 
-		// Array final untuk merge semua test_required
-		$test_required = [];
-		foreach ($test_required_raw as $item) {
-			if (!$item) continue;
+	public function index_testResult($report_no = null, $id_kualitas = null, $id = null)
+{
+    // ---------------------------------------------------------
+    // Validasi parameter
+    // ---------------------------------------------------------
+    if (empty($report_no) || empty($id_kualitas) || empty($id)) {
+        show_error('Nomor laporan, ID kualitas, atau ID tidak ditemukan.');
+        return;
+    }
 
-			// Coba decode JSON
-			$decoded = json_decode($item, true);
-			if (is_array($decoded)) {
-				$test_required = array_merge($test_required, $decoded);
-			} else {
-				// Jika bukan JSON, anggap CSV "A,B,C"
-				$parts = array_map('trim', explode(',', $item));
-				$test_required = array_merge($test_required, $parts);
+    // ---------------------------------------------------------
+    // Ambil test_required dari session / fallback ke current id
+    // ---------------------------------------------------------
+    $id_kualitas_array = $this->session->userdata('id_kualitas_array') ?: [$id_kualitas];
+
+    $tests_required_rows = $this->db
+        ->where_in('id_kualitas', $id_kualitas_array)
+        ->get('tbl_kualitas')
+        ->result_array();
+
+    $test_required_raw = array_column($tests_required_rows, 'test_required');
+    $test_required = [];
+    foreach ($test_required_raw as $item) {
+        if (!$item) continue;
+        $decoded = json_decode($item, true);
+        if (is_array($decoded)) {
+            $test_required = array_merge($test_required, $decoded);
+        } else {
+            $parts = array_map('trim', explode(',', $item));
+            $test_required = array_merge($test_required, $parts);
+        }
+    }
+    $test_required = array_unique($test_required);
+    $this->data['test_required'] = $test_required;
+
+    // ---------------------------------------------------------
+    // Ambil data lainnya
+    // ---------------------------------------------------------
+    $this->data['method_groups'] = $this->m_transaksi->get_method_groups();
+    $this->data['testmatrix']    = $this->m_transaksi->tampil_testmatrix()->result();
+
+	// ---------------------------------------------------------
+	// Build filter option dari tbl_testmatrix
+	// ---------------------------------------------------------
+	$filter_method_group = [];
+	$filter_test_level   = [];
+	$filter_composition  = [];
+
+	if (!empty($this->data['testmatrix'])) {
+		foreach ($this->data['testmatrix'] as $m) {
+
+			if (!empty($m->id_methodgroup)) {
+				$filter_method_group[$m->id_methodgroup] = true;
+			}
+
+			if (!empty($m->test_level)) {
+				$filter_test_level[$m->test_level] = true;
+			}
+
+			if (!empty($m->composition)) {
+				$filter_composition[$m->composition] = true;
 			}
 		}
+	}
 
-		// Hapus duplikat
-		$test_required = array_unique($test_required);
+	$this->data['filter_method_group'] = array_keys($filter_method_group);
+	$this->data['filter_test_level']   = array_keys($filter_test_level);
+	$this->data['filter_composition']  = array_keys($filter_composition);
 
-		// Kirim ke view
-		$this->data['test_required'] = $test_required;
+    $this->data['testResult']    = $this->m_transaksi->get_test_result($report_no, $id_kualitas_array);
+    $this->data['mode']          = 'create';
 
-		// ---------------------------------------------------------
-		// Ambil data lainnya untuk view
-		// ---------------------------------------------------------
-		$this->data['method_groups'] = $this->m_transaksi->get_method_groups();
-		$this->data['testmatrix']    = $this->m_transaksi->tampil_testmatrix()->result();
-		//$this->data['testResult']    = $this->m_transaksi->get_test_result($report_no, $id_kualitas);
-		$this->data['testResult'] = $this->m_transaksi->get_test_result($report_no);
-		$this->data['mode']          = 'create';
+    $this->data['penerimaan'] = $this->m_transaksi->get_report($report_no);
+    $this->data['id_kualitas'] = $id_kualitas;
+    $this->data['kodemethod']  = $this->m_transaksi->kode_method();
+    $this->data['kodereport']  = $this->m_transaksi->kodeReportKualitas();
 
-		$this->data['penerimaan'] = $this->m_transaksi->get_report($report_no);
-		$this->data['id_kualitas'] = $id_kualitas;
-		$this->data['kodemethod']  = $this->m_transaksi->kode_method();
-		$this->data['kodereport']  = $this->m_transaksi->kodeReportKualitas();
+    $where = ['id_kualitas' => $id];
+    $this->data['penerimaan'] = $this->m_transaksi->getByIdKualitas($where, 'tbl_kualitas')->result();
 
-		// Ambil data penerimaan berdasarkan ID
-		$where = ['id_kualitas' => $id];
-		$this->data['penerimaan'] = $this->m_transaksi->getByIdKualitas($where, 'tbl_kualitas')->result();
+    $this->data['report_no'] = $report_no;
 
-		$this->data['report_no'] = $report_no;       // untuk input hidden
-		//$this->data['testRequired'] = $testRequired; // untuk looping di tabel
+  	// ---------------------------------------------------------
+	// Build matrix_group (FINAL & BENAR)
+	// ---------------------------------------------------------
+	$matrix_group  = [];
+	$result_lookup = [];
+
+	// lookup method_code per test_type + id_testmatrix
+	$matrix_lookup = [];
+	if (!empty($this->data['testmatrix'])) {
+		foreach ($this->data['testmatrix'] as $m) {
+			$type_key = strtolower(trim($m->test_type));
+			$matrix_lookup[$type_key][$m->id_testmatrix] = $m->method_code;
+		}
+	}
+
+	if (!empty($this->data['testResult'])) {
+		foreach ($this->data['testResult'] as $row) {
+
+			if (empty($row->id_kualitas)) continue;
+
+			$type_key = strtolower(trim($row->test_type ?? 'UNKNOWN'));
+
+			$method = $matrix_lookup[$type_key][$row->id_testmatrix] ?? '-';
+
+			$matrix_group[$type_key][] = [
+				'test_name'     => $row->test_required ?? '-',
+				'title'         => $row->title ?? '',
+				'method_code'   => $method,
+				'id_testmatrix' => $row->id_testmatrix ?? '',
+				'id_methodgroup'  => $row->id_methodgroup ?? '',
+				'test_level'    => $row->test_level ?? '',
+				'composition'   => $row->composition ?? '',
+				'result_type'	=> $row->result_type ?? '',
+				'value_from'	=> $row->value_from ?? '',
+				'value_to'		=> $row->value_to ?? '',
+			];
+
+			$result_lookup[$row->id_testmatrix] = [
+				'result'          => $row->result ?? '',
+				'status'          => $row->status ?? '',
+				'result_passfail' => $row->result_passfail ?? '',
+				'comment'         => $row->comment ?? ''
+			];
+		}
+	}
+
+	$this->data['matrix_group']  = $matrix_group;
+	$this->data['result_lookup'] = $result_lookup;
+
 
 		// ---------------------------------------------------------
 		// Load view
@@ -2088,6 +2226,8 @@ public function dashboard_excel()
 			$this->data
 		);
 	}
+
+
 
 	/*public function index_testResult($report_no = null, $id_kualitas = null, $id = null, $id_reportkualitas = null, $id_handlingsample = null)
 	{
@@ -3463,73 +3603,71 @@ public function dashboard_excel()
             return false;
         }
     }
-
 	
-public function editaksi_care()
-{
-    $id_care        = $this->input->post('id_care');
-    $kategori_care  = $this->input->post('kategori_care');
-    $deskripsi      = $this->input->post('deskripsi');
+	public function editaksi_care()
+	{
+		$id_care        = $this->input->post('id_care');
+		$kategori_care  = $this->input->post('kategori_care');
+		$deskripsi      = $this->input->post('deskripsi');
 
-    // ambil data lama
-    $care_lama = $this->db
-        ->get_where('m_care', ['id_care' => $id_care])
-        ->row();
+		// ambil data lama
+		$care_lama = $this->db
+			->get_where('m_care', ['id_care' => $id_care])
+			->row();
 
-    if (!$care_lama) {
-        show_404();
-    }
+		if (!$care_lama) {
+			show_404();
+		}
 
-    // data update (tanpa simbol dulu)
-    $data = [
-        'kategori_care' => $kategori_care,
-        'deskripsi'     => $deskripsi
-    ];
+		// data update (tanpa simbol dulu)
+		$data = [
+			'kategori_care' => $kategori_care,
+			'deskripsi'     => $deskripsi
+		];
 
-    // === KONFIG UPLOAD ===
-  if (!empty($_FILES['simbol_care']['name'])) {
+		// === KONFIG UPLOAD ===
+	if (!empty($_FILES['simbol_care']['name'])) {
 
-    $config['upload_path']   = FCPATH . 'images/care_instruction/';
-    $config['allowed_types'] = 'png|jpg|gif';
-    $config['max_size']      = 2048;
-    $config['encrypt_name']  = TRUE;
+		$config['upload_path']   = FCPATH . 'images/care_instruction/';
+		$config['allowed_types'] = 'png|jpg|gif';
+		$config['max_size']      = 2048;
+		$config['encrypt_name']  = TRUE;
 
-    // WAJIB seperti ini
-    $this->load->library('upload');
-    $this->upload->initialize($config);
+		// WAJIB seperti ini
+		$this->load->library('upload');
+		$this->upload->initialize($config);
 
-    if (!$this->upload->do_upload('simbol_care')) {
+		if (!$this->upload->do_upload('simbol_care')) {
 
-        $this->session->set_flashdata(
-            'error',
-            $this->upload->display_errors()
-        );
-        redirect('c_transaksi/edit_care/' . $id_care);
-        return;
-    }
+			$this->session->set_flashdata(
+				'error',
+				$this->upload->display_errors()
+			);
+			redirect('c_transaksi/edit_care/' . $id_care);
+			return;
+		}
 
-    $upload_data = $this->upload->data();
-    $data['simbol_care'] = $upload_data['file_name'];
+		$upload_data = $this->upload->data();
+		$data['simbol_care'] = $upload_data['file_name'];
 
-    if (!empty($care_lama->simbol_care)) {
-        @unlink(FCPATH . 'images/care_instruction/' . $care_lama->simbol_care);
-    }
-}
+		if (!empty($care_lama->simbol_care)) {
+			@unlink(FCPATH . 'images/care_instruction/' . $care_lama->simbol_care);
+		}
+	}
 
 
-    // update DB
-    $update = $this->db->where('id_care', $id_care)
-                       ->update('m_care', $data);
+		// update DB
+		$update = $this->db->where('id_care', $id_care)
+						->update('m_care', $data);
 
-    if ($update) {
-        $this->session->set_flashdata('success', 'Data berhasil diperbarui');
-        redirect('c_transaksi/index_careInstruction');
-    } else {
-        $this->session->set_flashdata('error', 'Gagal memperbarui data');
-        redirect('c_transaksi/edit_care/' . $id_care);
-    }
-}
-
+		if ($update) {
+			$this->session->set_flashdata('success', 'Data berhasil diperbarui');
+			redirect('c_transaksi/index_careInstruction');
+		} else {
+			$this->session->set_flashdata('error', 'Gagal memperbarui data');
+			redirect('c_transaksi/edit_care/' . $id_care);
+		}
+	}
 
 	public function editaksi_careOther()
     {
@@ -3597,135 +3735,208 @@ public function editaksi_care()
 		redirect('c_transaksi/index_careOther');
 	}
 
+
+	
 	public function tambahaksi_method()
 	{
-		// ---------------------------------------------------------
-		// Helper aman ambil POST array
-		// ---------------------------------------------------------
+		
 		function postArr($key, $i)
 		{
 			$ci = &get_instance();
 			$arr = $ci->input->post($key);
+
 			return isset($arr[$i]) ? $arr[$i] : null;
 		}
 
-		// ---------------------------------------------------------
-		// VALIDASI: minimal 1 method
-		// ---------------------------------------------------------
-		$testmatrix_post = $this->input->post('id_testmatrix_hidden');
+		// ===============================
+		// Ambil POST
+		// ===============================
+		$report_no      = $this->input->post('report_no');
+		$id_penerimaan  = $this->input->post('id_penerimaan');
+		$id_kualitas    = $this->input->post('id_kualitas');
+		$id_reportkualitas = $this->input->post('id_reportkualitas');
 
-		if (empty($testmatrix_post) || count(array_filter($testmatrix_post)) === 0) {
-			$this->session->set_flashdata('error', 'Data metode pengujian tidak boleh kosong.');
+		$test_required  = $this->input->post('test_required');
+
+		$id_testmatrix  = (array) $this->input->post('id_testmatrix');
+		$result         = (array) $this->input->post('result');
+		$status         = (array) $this->input->post('status');
+		$comment        = (array) $this->input->post('comment');
+
+		// ===============================
+		// Validasi minimal IDENTITAS
+		// ===============================
+		if (!$report_no || !$id_penerimaan || !$id_kualitas) {
+			echo "<script>alert('Data utama belum lengkap');history.back();</script>";
+			exit;
+		}
+
+		// ===============================
+		// Siapkan data yang benar-benar diisi
+		// ===============================
+		$rows = [];
+
+		foreach ($id_testmatrix as $i => $id_tm) {
+
+			$hasValue =
+				(!empty($result[$i])) ||
+				(!empty($status[$i])) ||
+				(!empty($comment[$i]));
+
+			// kalau method kosong → SKIP
+			if (!$hasValue) {
+				continue;
+			}
+
+			$rows[] = [
+				'id_reportkualitas' => $id_reportkualitas,
+				'id_penerimaan'     => $id_penerimaan,
+				'id_kualitas'       => $id_kualitas,
+				'report_no'         => $report_no,
+				'test_required'     => is_array($test_required)
+										? json_encode($test_required)
+										: $test_required,
+
+				'id_testmatrix'     => $id_tm,
+				'result'            => $result[$i] ?? null,
+				'status'            => $status[$i] ?? null,
+				'comment'           => $comment[$i] ?? null,
+
+				'date_sampling'     => $this->input->post('date_sampling'),
+				'time_sampling'     => $this->input->post('time_sampling'),
+				'date_test'         => $this->input->post('date_test'),
+				'date_finish'       => $this->input->post('date_finish'),
+
+				//SHRINKAGE
+				'be_wash'    => postArr('be_wash', $i),
+				'af_wash_1'  => postArr('af_wash_1', $i),
+				'ac_wash_1'  => postArr('ac_wash_1', $i),
+
+				'af_wash_5'  => postArr('af_wash_5', $i),
+				'ac_wash_5'  => postArr('ac_wash_5', $i),
+
+				'af_wash_15' => postArr('af_wash_15', $i),
+				'ac_wash_15' => postArr('ac_wash_15', $i),
+
+				//FORMALDEHYDE
+				'mass_of'             => postArr('mass_of_hidden', $i),
+				'range_graph_1'       => postArr('range_graph_1_hidden', $i),
+				'range_graph_2'       => postArr('range_graph_2_hidden', $i),
+				'result_formaldehyde' => postArr('result_formaldehyde_hidden', $i),
+				'status_formaldehyde' => postArr('status_formaldehyde', $i),
+
+				//SOCK
+				'nahm_sock'			  => postArr('nahm_sock', $i),
+				'result_sock'		  => postArr('result_sock', $i),
+				'comment_sock'		  => postArr('comment_sock', $i),
+				'status_sock'		  => postArr('status_sock', $i),
+
+				// WASH (com_wash)
+				'com_wash_app'       => $this->input->post('com_wash_app'),
+				'com_wash_shrink'    => $this->input->post('com_wash_shrink'),
+				'com_wash_pil'       => $this->input->post('com_wash_pil'),
+				'com_wash_sta'       => $this->input->post('com_wash_sta'),
+				'com_wash_dis'       => $this->input->post('com_wash_dis'),
+				'com_wash_zip'       => $this->input->post('com_wash_zip'),
+				'com_wash_label'     => $this->input->post('com_wash_label'),
+				'com_wash_emb'       => $this->input->post('com_wash_emb'),
+				'com_wash_print'     => $this->input->post('com_wash_print'),
+				'com_wash_logo'		 => $this->input->post('com_wash_logo'),
+
+				// WASH 1X
+				'1_wash_print'       => $this->input->post('1_wash_print'),
+				'1_wash_emb'         => $this->input->post('1_wash_emb'),
+				'1_wash_label'       => $this->input->post('1_wash_label'),
+				'1_wash_zip'         => $this->input->post('1_wash_zip'),
+				'1_wash_dis'         => $this->input->post('1_wash_dis'),
+				'1_wash_sta'         => $this->input->post('1_wash_sta'),
+				'1_wash_pil'         => $this->input->post('1_wash_pil'),
+				'1_wash_shrink'      => $this->input->post('1_wash_shrink'),
+				'1_wash_app'         => $this->input->post('1_wash_app'),
+				'1_wash_logo'		 => $this->input->post('1_wash_logo'),
+
+				// WASH 3X
+				'3_wash_print'       => $this->input->post('3_wash_print'),
+				'3_wash_emb'         => $this->input->post('3_wash_emb'),
+				'3_wash_label'       => $this->input->post('3_wash_label'),
+				'3_wash_zip'         => $this->input->post('3_wash_zip'),
+				'3_wash_dis'         => $this->input->post('3_wash_dis'),
+				'3_wash_sta'         => $this->input->post('3_wash_sta'),
+				'3_wash_pil'         => $this->input->post('3_wash_pil'),
+				'3_wash_shrink'      => $this->input->post('3_wash_shrink'),
+				'3_wash_app'         => $this->input->post('3_wash_app'),
+				'3_wash_logo'		 => $this->input->post('3_wash_logo'),
+
+				// WASH 15X
+				'15_wash_print'      => $this->input->post('15_wash_print'),
+				'15_wash_emb'        => $this->input->post('15_wash_emb'),
+				'15_wash_label'      => $this->input->post('15_wash_label'),
+				'15_wash_zip'        => $this->input->post('15_wash_zip'),
+				'15_wash_dis'        => $this->input->post('15_wash_dis'),
+				'15_wash_sta'        => $this->input->post('15_wash_sta'),
+				'15_wash_pil'        => $this->input->post('15_wash_pil'),
+				'15_wash_shrink'     => $this->input->post('15_wash_shrink'),
+				'15_wash_app'        => $this->input->post('15_wash_app'),
+				'15_wash_logo'		 => $this->input->post('15_wash_logo'),
+
+				// MEASUREMENTS
+				'mov_sleeve'         => $this->input->post('mov_sleeve'),
+				'mov_sideseam'       => $this->input->post('mov_sideseam'),
+				'sle_width'          => $this->input->post('sle_width'),
+				'sideseam'           => $this->input->post('sideseam'),
+				'sleeve'             => $this->input->post('sleeve'),
+				'body'               => $this->input->post('body'),
+				'neck_no'            => $this->input->post('neck_no'),
+				'neck_yes'           => $this->input->post('neck_yes'),
+				'fibre_com'          => $this->input->post('fibre_com'),
+				'machine_model'      => $this->input->post('machine_model'),
+				'temp'               => $this->input->post('temp'),
+				'hand_dry'           => $this->input->post('hand_dry'),
+				'tumble_dry'         => $this->input->post('tumble_dry'),
+				'line_dry'           => $this->input->post('line_dry')
+			];
+		}
+
+		// ===============================
+		// TIDAK ADA DATA → BOLEH
+		// ===============================
+		if (empty($rows)) {
 			redirect(
 				'c_transaksi/index_testResult/' .
-				$this->input->post('report_no') . '/' .
-				$this->input->post('id_kualitas') . '/' .
-				$this->input->post('id_penerimaan')
+				$report_no . '/' .
+				$id_kualitas . '/' .
+				$id_penerimaan
 			);
 			return;
 		}
 
-		// ---------------------------------------------------------
-		// AMBIL test_required SEKALI (GLOBAL)
-		// ---------------------------------------------------------
-		$test_required_post = $this->input->post('test_required');
-
-		$test_required_json = is_array($test_required_post)
-			? json_encode($test_required_post)
-			: $test_required_post;
-
-		// ---------------------------------------------------------
-		// PREPARE LOOP
-		// ---------------------------------------------------------
-		$jumlah_method = count((array) $testmatrix_post);
-		$data = [];
-
-		// ---------------------------------------------------------
-		// LOOP INSERT METHOD
-		// ---------------------------------------------------------
-		for ($i = 0; $i < $jumlah_method; $i++) {
-
-			$data[$i] = [
-				// IDENTITAS
-				'id_testmatrix'      => postArr('id_testmatrix_hidden', $i),
-				'id_reportkualitas'  => $this->input->post('id_reportkualitas'),
-				'id_penerimaan'      => $this->input->post('id_penerimaan'),
-				'id_kualitas'        => $this->input->post('id_kualitas'),
-				'report_no'          => $this->input->post('report_no'),
-
-				// FIX UTAMA 🔥
-				'test_required'      => $test_required_json,
-
-				// RESULT
-				'result'             => postArr('result_hidden', $i),
-				'status'             => postArr('status_hidden', $i),
-
-				// PASS FAIL
-				'passfail'           => postArr('result_passfail_hidden', $i),
-				'passfail1'          => postArr('result_passfail1_hidden', $i),
-				'status_passfail'    => postArr('status_passfail_hidden', $i),
-
-				// COMMENT & STATEMENT
-				'comment'            => postArr('comment_hidden', $i),
-				'statement'          => postArr('statement_hidden', $i),
-
-				// TANGGAL
-				'date_sampling'      => $this->input->post('date_sampling'),
-				'time_sampling'      => $this->input->post('time_sampling'),
-				'date_test'          => $this->input->post('date_test'),
-				'date_finish'        => $this->input->post('date_finish'),
-
-				// STATUS TYPE
-				'status_boolean'          => postArr('status_boolean', $i),
-				'status_statement_result' => postArr('status_statement_result', $i),
-				'status_numeric'          => postArr('status_numeric', $i),
-				'status_shrinkage'        => postArr('status_shrinkage', $i),
-			];
-		}
-
-		// ---------------------------------------------------------
-		// DATA SUMMARY REPORT
-		// ---------------------------------------------------------
-		$data_report = [
-			'id_reportkualitas' => $this->input->post('id_reportkualitas'),
-			'id_penerimaan'     => $this->input->post('id_penerimaan'),
-			'id_kualitas'       => $this->input->post('id_kualitas'),
-			'result_status'     => $this->input->post('result_status'),
-			'date_final'        => $this->input->post('date_final')
-		];
-
-		// ---------------------------------------------------------
-		// TRANSAKSI DB
-		// ---------------------------------------------------------
+		// ===============================
+		// DB TRANSACTION
+		// ===============================
 		$this->db->trans_start();
 
-		// insert detail method
-		$this->m_transaksi->insert_reportkualitas($data);
+		$this->db->insert_batch('report_kualitas', $rows);
 
-		// insert summary
-		$this->m_transaksi->insert_handlingsample($data_report);
-
-		// update status kualitas (SUDAH BENAR)
-		$this->db->where('id_kualitas', $this->input->post('id_kualitas'));
-		$this->db->update('tbl_kualitas', ['status' => 'selesai']);
+		// update status kualitas (optional)
+		$this->db->where('id_kualitas', $id_kualitas)
+				->update('tbl_kualitas', ['status' => 'selesai']);
 
 		$this->db->trans_complete();
 
-		// ---------------------------------------------------------
+		// ===============================
 		// FINAL
-		// ---------------------------------------------------------
+		// ===============================
 		if ($this->db->trans_status() === FALSE) {
-			log_message('error', 'Transaction failed during insert.');
-			redirect('c_transaksi/error');
+
+			echo "<script>alert('Gagal menyimpan data');history.back();</script>";
+			exit;
+
 		} else {
-			$this->checkAndInsertFinalHandling(
-				$this->input->post('id_penerimaan'),
-				$this->input->post('report_no')
-			);
 
 			redirect('c_transaksi/index_kualitas');
 		}
 	}
+
 
 	public function editaksi_method()
 	{
@@ -4364,148 +4575,157 @@ public function editaksi_care()
 		}
 	}
 
-	public function simpan_rilis()
-	{
-		$id_penerimaan   = $this->input->post('id_penerimaan');
-		$date_sending    = $this->input->post('date_sending');
-		$jenis_report    = $this->input->post('jenis_report');
-		$signature       = $this->input->post('signature');
-		$review          = $this->input->post('review');
-		$authorized      = $this->input->post('authorized');
-		$comment         = $this->input->post('comment');
-		$remarks         = $this->input->post('remarks');
-		$adding_type     = $this->input->post('adding_type'); // adding | no_adding
-		$input_report_no = $this->input->post('report_no');
+public function simpan_rilis()
+{
+    $id_penerimaan   = $this->input->post('id_penerimaan');
+    $report_no       = $this->input->post('report_no');
+    $jenis_report    = $this->input->post('jenis_report');
+    $date_sending    = $this->input->post('date_sending');
+    $signature       = $this->input->post('signature');
+    $review          = $this->input->post('review');
+    $authorized      = $this->input->post('authorized');
+    $comment         = $this->input->post('comment');
+    $remarks         = $this->input->post('remarks');
+    $adding_type     = $this->input->post('adding_type');
+	$personil		 = $this->input->post('personil');
 
-		/* ===============================
-		AMBIL RILIS TERAKHIR
-		================================ */
-		$last = $this->db->query("
-			SELECT report_no, new_report_no
-			FROM report_finalhandling
-			WHERE id_penerimaan = ?
-			ORDER BY id_final DESC
-			LIMIT 1
-		", [$id_penerimaan])->row();
+    $this->db->trans_start();
 
-		/* ===============================
-		NO ADDING
-		================================ */
-		if ($adding_type === 'no_adding') {
+    /* =====================================================
+       1️⃣ HANDLE REPORT NUMBER (ADDING LOGIC)
+    ====================================================== */
 
-			if ($last) {
-				$report_no     = $last->report_no;
-				$new_report_no = $last->report_no;
-			} else {
-				$report_no     = $input_report_no;
-				$new_report_no = $input_report_no;
-			}
+    $new_report_no = $report_no;
+    $next_version  = 0;
 
-			$next_version = 0;
-		}
+    preg_match('/(-[A-Z]+)$/', $report_no, $m);
+    $suffix = $m[1] ?? '';
+    $base_without_suffix = str_replace($suffix, '', $report_no);
 
-		/* ===============================
-		ADDING
-		================================ */
-		else {
+    if ($adding_type === 'adding') {
 
-			// RILIS PERTAMA
-			if (!$last) {
+        $base_exist = $this->db->where('id_penerimaan', $id_penerimaan)
+            ->where('jenis_report', $jenis_report)
+            ->where('new_report_no', $report_no)
+            ->count_all_results('report_finalhandling');
 
-				$report_no     = $input_report_no;
-				$new_report_no = $input_report_no;
-				$next_version  = 0;
+        if ($base_exist > 0) {
 
-			} else {
+            $like = $base_without_suffix . "A%{$suffix}";
 
-				/* ===============================
-				BASE REPORT NO (PERTAMA)
-				================================ */
-				$first = $this->db->query("
-					SELECT report_no
-					FROM report_finalhandling
-					WHERE id_penerimaan = ?
-					ORDER BY id_final ASC
-					LIMIT 1
-				", [$id_penerimaan])->row();
+            $max = $this->db->query("
+                SELECT MAX(
+                    CAST(
+                        SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(new_report_no, 'A', -1),
+                        '-', 1
+                    ) AS UNSIGNED)
+                ) AS max_ver
+                FROM report_finalhandling
+                WHERE id_penerimaan = ?
+                AND jenis_report = ?
+                AND new_report_no LIKE ?
+            ", [$id_penerimaan, $jenis_report, $like])->row();
 
-				$base_report_no = $first ? $first->report_no : $input_report_no;
+            $next_version = ($max && $max->max_ver)
+                ? ((int)$max->max_ver + 1)
+                : 1;
 
-				/* ===============================
-				AMBIL SUFFIX
-				================================ */
-				preg_match('/(-[A-Z]+)$/', $base_report_no, $m);
-				$suffix = $m[1] ?? '';
+            $new_report_no = $base_without_suffix . 'A' . $next_version . $suffix;
+        }
+    }
 
-				/* ===============================
-				BASE TANPA SUFFIX
-				================================ */
-				$base = str_replace($suffix, '', $base_report_no);
+    /* =====================================================
+       2️⃣ HITUNG RESULT STATUS
+    ====================================================== */
 
-				/* ===============================
-				CARI A TERBESAR
-				================================ */
-				$like = "%A%{$suffix}";
+    $result_status = 'PASS';
 
-				$max = $this->db->query("
-					SELECT MAX(
-						CAST(
-							SUBSTRING_INDEX(
-								SUBSTRING_INDEX(new_report_no, 'A', -1),
-							'-', 1
-						) AS UNSIGNED)
-					) AS max_ver
-					FROM report_finalhandling
-					WHERE id_penerimaan = ?
-					AND new_report_no LIKE ?
-				", [$id_penerimaan, $like])->row();
+    $fail = $this->db->where('id_penerimaan', $id_penerimaan)
+        ->where('report_no', $report_no)
+       // ->where('jenis_report', $jenis_report)
+        ->where('status', 'FAIL')
+        ->count_all_results('report_kualitas');
 
-				$next_version = ($max && $max->max_ver) ? ((int)$max->max_ver + 1) : 1;
+    if ($fail > 0) {
+        $result_status = 'FAIL';
+    }
 
-				/* ===============================
-				SUSUN NOMOR BARU
-				================================ */
-				$report_no     = $base_report_no;
-				$new_report_no = $base . 'A' . $next_version . $suffix;
-			}
-		}
+    /* =====================================================
+       3️⃣ AMBIL TEST YANG BELUM SELESAI
+    ====================================================== */
 
-		/* ===============================
-		INSERT FINAL HANDLING
-		================================ */
-		$data = [
-			'id_penerimaan' => $id_penerimaan,
-			'report_no'     => $report_no,
-			'new_report_no' => $new_report_no,
-			'date_sending'  => $date_sending,
-			'signature'     => $signature,
-			'review'        => $review,
-			'authorized'    => $authorized,
-			'comment_final' => $comment,
-			'remarks_final' => $remarks,
-			'jenis_report'  => $jenis_report
-		];
+    $tests = $this->db->select('test_required')
+        ->from('tbl_kualitas')
+        ->where('id_penerimaan', $id_penerimaan)
+        ->where('report_no', $report_no)
+        ->where('(status IS NULL OR status != "selesai")', null, false)
+        ->get()
+        ->result();
 
-		$this->db->insert('report_finalhandling', $data);
+    /* =====================================================
+       4️⃣ INSERT FINAL HANDLING
+    ====================================================== */
 
-		/* ===============================
-		UPDATE REPORT KUALITAS
-		================================ */
-		$this->db->where('id_penerimaan', $id_penerimaan);
+    if (!empty($tests)) {
 
-		/* hanya yang belum rilis */
-		$this->db->where('(rilis IS NULL OR rilis = 0)', null, false);
+        foreach ($tests as $row) {
 
-		/* hanya yang new_report_no masih kosong */
-		$this->db->where('(new_report_no IS NULL OR new_report_no = "")', null, false);
+            $this->db->insert('report_finalhandling', [
+                'id_penerimaan' => $id_penerimaan,
+                'report_no'     => $report_no,
+                'new_report_no' => $new_report_no,
+                'date_sending'  => $date_sending,
+                'signature'     => $signature,
+                'review'        => $review,
+                'authorized'    => $authorized,
+                'comment_final' => $comment,
+                'remarks_final' => $remarks,
+                'jenis_report'  => $jenis_report,
+                'test_required' => $row->test_required,
+                'result_status' => $result_status,
+				'personil'		=> $personil
+            ]);
+        }
 
-		$this->db->update('report_kualitas', [
-			'new_report_no' => $new_report_no,
-			'rilis'         => ($adding_type === 'adding') ? $next_version : 1
-		]);
+        /* =============================================
+           5️⃣ UPDATE tbl_kualitas → selesai
+        ============================================== */
 
-		redirect('c_transaksi/index_reportAll');
-	}
+        $test_names = array_map(function($r){
+            return $r->test_required;
+        }, $tests);
+
+        $this->db->where('id_penerimaan', $id_penerimaan);
+        $this->db->where('report_no', $report_no);
+        $this->db->where_in('test_required', $test_names);
+        $this->db->update('tbl_kualitas', [
+            'status' => 'selesai'
+        ]);
+    }
+
+    /* =====================================================
+       6️⃣ UPDATE report_kualitas (rilis flag)
+    ====================================================== */
+
+    $this->db->where('id_penerimaan', $id_penerimaan);
+    $this->db->where('report_no', $report_no);
+    //$this->db->where('jenis_report', $jenis_report);
+    $this->db->where('(rilis IS NULL OR rilis = 0)', null, false);
+
+    $this->db->update('report_kualitas', [
+        'new_report_no' => $new_report_no,
+        'rilis'         => ($adding_type === 'adding') ? $next_version : 1
+    ]);
+
+    $this->db->trans_complete();
+
+    redirect('c_transaksi/index_reportAll');
+}
+
+
+
+
 
 	public function get_report_no($id_penerimaan, $reportType)
 	{
@@ -4537,150 +4757,235 @@ public function editaksi_care()
 
 
 	//REPORT
- 	public function fgt($id_penerimaan, $new_report_no)
-	{
-		$this->load->model('M_transaksi');
-
-		/* ===============================
-		DATA REPORT (FILTER BY URL)
-		================================ */
-		$this->data['report'] = $this->M_transaksi->get_report_data_all($id_penerimaan, $new_report_no);
-
-		if (!$this->data['report']) {
-			show_404();
-			return;
-		}
-
-		/* ===============================
-		DATA METHOD (PAKAI new_report_no YANG SAMA)
-		================================ */
-		$this->data['method'] = $this->M_transaksi->get_reportmethod_adidasAll($id_penerimaan, $new_report_no);
-
-		if (!$this->data['method']) {
-			show_404();
-			return;
-		}
-
-		$this->data['title'] = 'FABRIC TEST REPORT';
-		$this->data['no']    = 1;
-
-		/* ===============================
-		DOMPDF
-		================================ */
-		$options = new Options();
-		$options->set('isHtml5ParserEnabled', true);
-		$options->set('isPhpEnabled', true);
-
-		$dompdf = new Dompdf($options);
-		$dompdf->setPaper('A4', 'portrait');
-
-		/* ===============================
-		SUBSCRIPT (A1, A2, dst)
-		================================ */
-		$subscript = '';
-		if (!empty($new_report_no) && preg_match('/A\d+/', $new_report_no, $m)) {
-			$subscript = $m[0]; // A1, A2
-		}
-
-		$this->data['subscript'] = $subscript;
-
-		$html = $this->load->view(
-			'adidas/report/report_rilis/fgt',
-			$this->data,
-			true
-		);
-
-		$dompdf->loadHtml($html);
-		$dompdf->render();
-		$dompdf->stream(
-			'FGT Report ' . date('d F Y'),
-			["Attachment" => false]
-		);
-	}
-
-		public function fgwt($id_penerimaan, $new_report_no)
+		public function fgt($id_penerimaan, $new_report_no)
 		{
-			$this->data['report'] = $this->m_transaksi->get_report_data_all($id_penerimaan, $new_report_no);
-			$this->data['method'] = $this->m_transaksi->get_reportmethod_adidasAll($id_penerimaan, $new_report_no);
-			$this->data['ceklis'] = $this->m_transaksi->get_reportmethod_checklist($id_penerimaan);
-			$this->data['shrinkage'] = $this->m_transaksi->get_reportmethod_shrinkage($id_penerimaan);
+			$this->load->model('M_transaksi');
 
-			if (!$this->data['method']) {
+			/* ===================================================
+			1️⃣ AMBIL DATA REPORT FINAL
+			=================================================== */
+			$report = $this->M_transaksi->get_report_data_all($id_penerimaan, $new_report_no);
+
+			if (!$report) {
 				show_404();
 				return;
 			}
 
-			//CARE INSTRUCTION
-			foreach ($this->data['report'] as $r) {
+			/* ===================================================
+			2️⃣ AMBIL DATA METHOD (BERDASARKAN new_report_no)
+			=================================================== */
+			$method = $this->M_transaksi->get_reportmethod_adidasAll($id_penerimaan, $new_report_no);
 
-				$care_ids = [
-					$r->washing,
-					$r->bleach,
-					$r->drying,
-					$r->ironing,
-					$r->profess
-				];
+			if (!$method) {
+				show_404();
+				return;
+			}
 
-				$care_images = [];
+			/* ===================================================
+			3️⃣ HITUNG SUBSCRIPT (A1, A2, dst)
+			=================================================== */
+			$subscript = '';
+			if (!empty($new_report_no) && preg_match('/A\d+/', $new_report_no, $m)) {
+				$subscript = $m[0]; // Contoh: A1, A2
+			}
 
-				foreach ($care_ids as $id) {
+			/* ===================================================
+			4️⃣ PERSIAPAN DATA UNTUK VIEW
+			=================================================== */
+			$this->data['report']    = $report;
+			$this->data['method']    = $method;
+			$this->data['subscript'] = $subscript;
+			$this->data['title']     = 'FABRIC TEST REPORT';
+			$this->data['no']        = 1; // nomor urut table jika perlu
 
-					if (empty($id)) {
-						continue; // kalau kosong skip
-					}
+			/* ===================================================
+			5️⃣ GENERATE PDF DENGAN DOMPDF
+			=================================================== */
+			$options = new \Dompdf\Options();
+			$options->set('isHtml5ParserEnabled', true);
+			$options->set('isPhpEnabled', true);
 
-					$care = $this->db->get_where('m_care', ['id_care' => $id])->row();
+			$dompdf = new \Dompdf\Dompdf($options);
+			$dompdf->setPaper('A4', 'portrait');
 
-					if (!$care || empty($care->simbol_care)) {
-						continue; // kalau tidak cocok di DB skip
-					}
+			$html = $this->load->view(
+				'adidas/report/report_rilis/fgt',
+				$this->data,
+				true
+			);
 
-					$path = FCPATH . 'images/care_instruction/' . $care->simbol_care;
+			$dompdf->loadHtml($html);
+			$dompdf->render();
 
-					if (!file_exists($path)) {
-						continue; // file tidak ada → skip
-					}
-
-					// aman → tambahkan ke array
-					$care_images[] = base64_encode(file_get_contents($path));
-				}
-
-				// jika benar-benar tidak ada gambar → tetap array kosong
-				$r->care_images = $care_images;
+			$dompdf->stream(
+				'FGT Report ' . date('d F Y'),
+				["Attachment" => false]
+			);
 		}
 
 
-    // Set data untuk title dan lainnya
-    $this->data['title'] = 'Finished Garment Wash Test Report';
-    $this->data['no'] = 1;
+		public function fgwt($id_penerimaan, $new_report_no) 
+{
+    $this->load->model('m_transaksi');
 
-    // DomPDF
-    $options = new Options();
+    /* ===================================================
+       1️⃣ AMBIL DATA REPORT FINAL
+       =================================================== */
+    $report = $this->m_transaksi->get_report_data_all($id_penerimaan, $new_report_no);
+
+    if (!$report) {
+        show_404();
+        return;
+    }
+
+    /* ===================================================
+       2️⃣ AMBIL DATA METHOD (BERDASARKAN new_report_no)
+       =================================================== */
+    $method = $this->m_transaksi->get_reportmethod_adidasAll($id_penerimaan, $new_report_no);
+
+    if (!$method) {
+        show_404();
+        return;
+    }
+
+    /* ===================================================
+       3️⃣ AMBIL CHECKLIST & SHRINKAGE
+       =================================================== */
+    $ceklis    = $this->m_transaksi->get_reportmethod_checklist($id_penerimaan);
+    $shrinkage = $this->m_transaksi->get_reportmethod_shrinkage($id_penerimaan);
+
+    /* ===================================================
+       4️⃣ HITUNG SUBSCRIPT (A1, A2, dst)
+       =================================================== */
+    $subscript = '';
+    if (!empty($new_report_no) && preg_match('/A\d+/', $new_report_no, $m)) {
+        $subscript = $m[0]; // Contoh: A1, A2
+    }
+
+    /* ===================================================
+       5️⃣ CARE INSTRUCTION
+       =================================================== */
+    foreach ($report as $r) {
+        $care_ids = [
+            $r->washing,
+            $r->bleach,
+            $r->drying,
+            $r->ironing,
+            $r->profess
+        ];
+
+        $care_images = [];
+
+        foreach ($care_ids as $id) {
+            if (empty($id)) continue;
+
+            $care = $this->db->get_where('m_care', ['id_care' => $id])->row();
+            if (!$care || empty($care->simbol_care)) continue;
+
+            $path = FCPATH . 'images/care_instruction/' . $care->simbol_care;
+            if (!file_exists($path)) continue;
+
+            $care_images[] = base64_encode(file_get_contents($path));
+        }
+
+        $r->care_images = $care_images;
+    }
+
+    /* ===================================================
+       6️⃣ PERSIAPAN DATA UNTUK VIEW
+       =================================================== */
+    $this->data['report']    = $report;
+    $this->data['method']    = $method;
+    $this->data['ceklis']    = $ceklis;
+    $this->data['shrinkage'] = $shrinkage;
+    $this->data['subscript'] = $subscript;
+    $this->data['title']     = 'Finished Garment Wash Test Report';
+    $this->data['no']        = 1;
+
+    /* ===================================================
+       7️⃣ GENERATE PDF
+       =================================================== */
+    $options = new \Dompdf\Options();
     $options->set('isHtml5ParserEnabled', true);
     $options->set('isPhpEnabled', true);
 
-    $dompdf = new Dompdf($options);
+    $dompdf = new \Dompdf\Dompdf($options);
     $dompdf->setPaper('A4', 'portrait');
 
-			/* ===============================
-		SUBSCRIPT (A1, A2, dst)
-		================================ */
-		$subscript = '';
-		if (!empty($new_report_no) && preg_match('/A\d+/', $new_report_no, $m)) {
-			$subscript = $m[0]; // A1, A2
-		}
-
-		$this->data['subscript'] = $subscript;
-
-    // Load HTML
     $html = $this->load->view('adidas/report/report_rilis/fgwt', $this->data, true);
 
     $dompdf->loadHtml($html);
     $dompdf->render();
 
-    // Output PDF
-    $dompdf->stream('Finished Garment Wash Test Report ' . date('d F Y'), array("Attachment" => false));
+    $dompdf->stream(
+        'Finished Garment Wash Test Report ' . date('d F Y'),
+        ["Attachment" => false]
+    );
+}
+
+		public function ftr($id_penerimaan, $new_report_no)
+		{
+			$this->load->model('m_transaksi');
+
+			/* ===================================================
+			1️⃣ AMBIL DATA REPORT FINAL
+			=================================================== */
+			$report = $this->m_transaksi->get_report_data_all($id_penerimaan, $new_report_no);
+
+			if (!$report) {
+				show_404();
+				return;
+			}
+
+			/* ===================================================
+			2️⃣ AMBIL DATA METHOD (BERDASARKAN new_report_no)
+			=================================================== */
+			$method = $this->m_transaksi->get_reportmethod_adidasAll($id_penerimaan, $new_report_no);
+
+			if (!$method) {
+				show_404();
+				return;
+			}
+
+			/* ===================================================
+			3️⃣ HITUNG SUBSCRIPT (A1, A2, dst)
+			=================================================== */
+			$subscript = '';
+			if (!empty($new_report_no) && preg_match('/A\d+/', $new_report_no, $m)) {
+				$subscript = $m[0]; // Contoh: A1, A2
+			}
+
+			/* ===================================================
+			4️⃣ PERSIAPAN DATA UNTUK VIEW
+			=================================================== */
+			$this->data['report']    = $report;
+			$this->data['method']    = $method;
+			$this->data['subscript'] = $subscript;
+			$this->data['title']     = 'FABRIC TEST REPORT';
+			$this->data['no']        = 1; // nomor urut tabel jika perlu
+
+			/* ===================================================
+			5️⃣ GENERATE PDF
+			=================================================== */
+			$options = new \Dompdf\Options();
+			$options->set('isHtml5ParserEnabled', true);
+			$options->set('isPhpEnabled', true);
+
+			$dompdf = new \Dompdf\Dompdf($options);
+			$dompdf->setPaper('A4', 'portrait');
+
+			$html = $this->load->view('adidas/report/report_rilis/ftr', $this->data, true);
+
+			$dompdf->loadHtml($html);
+			$dompdf->render();
+
+			$dompdf->stream(
+				'FGT Report ' . date('d F Y'),
+				["Attachment" => false]
+			);
 		}
+
+
 
 	public function swtr($id_penerimaan, $new_report_no)
 	{
@@ -4811,52 +5116,7 @@ public function editaksi_care()
 			// Mengunduh atau menampilkan hasil PDF
 			$dompdf->stream('FGT Report ' . date('d F Y'), array("Attachment" => false)); // Tampilkan PDF di browser
 		}
-		public function ftr($id_penerimaan, $new_report_no)
-		{
-			$this->data['report'] = $this->m_transaksi->get_report_data_all($id_penerimaan, $new_report_no);
-			//$this->data['handling'] = $this->m_transaksi->get_report_data_adidas($id_penerimaan); 
-			$this->data['method'] = $this->m_transaksi-> get_reportmethod_adidasAll($id_penerimaan, $new_report_no);
-
-			if (!$this->data['method']){
-				show_404();
-				return;
-			}
-
-			// Set data untuk title dan lainnya
-			$this->data['title'] = 'FABRIC TEST REPORT';
-			$this->data['no'] = 1; // Ini bisa diubah sesuai kebutuhan
-
-			// Menyiapkan Dompdf
-			$options = new Options();
-			$options->set('isHtml5ParserEnabled', true);
-			$options->set('isPhpEnabled', true); // Enable PHP in HTML (Jika diperlukan)
-
-			// Inisialisasi Dompdf dengan options
-			$dompdf = new Dompdf($options);
-
-			$dompdf->setPaper('A4', 'portrait'); // Set ukuran kertas
-
-			
-			/* ===============================
-			SUBSCRIPT (A1, A2, dst)
-			================================ */
-			$subscript = '';
-			if (!empty($new_report_no) && preg_match('/A\d+/', $new_report_no, $m)) {
-				$subscript = $m[0]; // A1, A2
-			}
-
-			$this->data['subscript'] = $subscript;
-
-			// Muat view HTML untuk laporan
-			$html = $this->load->view('adidas/report/report_rilis/ftr', $this->data, true);
-
-			// Load HTML ke Dompdf dan render
-			$dompdf->loadHtml($html);
-			$dompdf->render();
-
-			// Mengunduh atau menampilkan hasil PDF
-			$dompdf->stream('FGT Report ' . date('d F Y'), array("Attachment" => false)); // Tampilkan PDF di browser
-		}
+	
 		public function ttr1($id_penerimaan, $new_report_no)
 		{
 			$this->data['report'] = $this->m_transaksi->get_report_data_all($id_penerimaan, $new_report_no);

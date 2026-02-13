@@ -111,6 +111,19 @@ class TestMatrix extends CI_Controller {
         $data['age'] = $this->m_testMatrix->tampil_age()->result();
          $this->template->load('layout/template','masterData/testMatrix/testMatrix/tambah.php', $data);
     }
+    public function tambahaksiMatrix(){
+        $data = array(
+        'id_testmethod' => $this->input->post('id_testmethod'),
+        'title'         => $this->input->post('title'),
+        'method_code'   => $this->input->post('method_code'),
+        'brand'         => $this->input->post('brand'),
+        'product_type'  => implode(',', (array)$this->input->post('product_type')),
+        'age'           => $this->input->post('age')
+    );
+    $this->db->insert('tbl_testmatrix', $data);
+    redirect('testMatrix/indexMatrix');
+    }
+
 
     public function editMatrix($id_testmatrix)
     {

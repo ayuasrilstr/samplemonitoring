@@ -156,7 +156,7 @@
                                 <div class="col-md-6 pl-pr-1">
                                     <div class="form-group">
                                         <label>Measurement</label>
-                                        <input name="measurement"  class="form-control" required>
+                                        <input name="measurement"  class="form-control">
                                     </div>
                                 </div>
                                 <div class="col-md-3 pl-pr-1">
@@ -173,7 +173,7 @@
                                 <div class="col-md-3 pl-pr-1">
                                     <div class="form-group">
                                         <label>Dry Process</label>
-                                        <select name="dry" id="dry" class="form-control" required> 
+                                        <select name="dry" id="dry" class="form-control"> 
                                         <option selected disabled>Select</option>
                                         <option value="Line Dry/Flat Dry">Line Dry/Flat Dry</option>
                                         <option value="Tumble Dry">Tumble Dry</option>
@@ -196,7 +196,7 @@
                                     <div class="col-md-3 pl-pr-1">
                                         <div class="form-group">
                                             <label>Product Type</label>
-                                            <select name="product_type[]"  id="product_type[]" class="form-control selectpicker" multiple required>
+                                            <select name="product_type[]"  id="product_type" class="form-control selectpicker" multiple required>
                                                     <option disabled>Select</option>
                                                         <?php foreach($producttype as $u): ?>
                                                     <option value="<?= $u -> product_type?>"><?= $u-> product_type?></option>
@@ -207,7 +207,7 @@
                                     <div class="col-md-3 pl-pr-1">
                                         <div class="form-group">
                                             <label>Test Level</label>
-                                            <input name="test_level"  class="form-control" required>
+                                            <input name="test_level"  class="form-control">
                                         </div>
                                     </div>
                                     <div class="col-md-3 pl-pr-1">
@@ -226,7 +226,7 @@
                                     <div class="col-md-3 pl-pr-1">
                                             <div class="form-group">
                                                 <label>Fabric Tech</label>
-                                                <select name="fabric_tech" class="form-control" required>
+                                                <select name="fabric_tech" class="form-control">
                                                     <option selected disabled>Select</option>
                                                     <option value="K">K : Knit</option>
                                                     <option value="W">W : Woven</option>
@@ -237,7 +237,7 @@
                                     <div class="col-md-3 pl-pr-1">
                                         <div class="form-group">
                                             <label>Composition</label>
-                                            <select name="composition" class="form-control" required>
+                                            <select name="composition" class="form-control">
                                                 <option selected disabled>Select</option>
                                                 <option value="N">N: Natural</option>
                                                 <option value="S">S: Synthetic</option>

@@ -67,7 +67,6 @@
                   <span style="font-size: 11px; font-weight: bold;">Report Sample</span><hr>
                     <input type="hidden" name="id_reportkualitas" value="<?= $detail->id_reportkualitas; ?>">
                     <input type="hidden" name="id_handlingsample" value="<?= $detail->id_handlingsample; ?>">
-                   
                 </div>
                 <div class="col-md-6">
                   <div class="form-group">

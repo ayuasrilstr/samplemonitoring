@@ -32,7 +32,7 @@
 
        .logo-top-right {
             position: absolute;
-            top: 50px;
+            top: 5px;
             left: 50%;
             transform: translateX(-50%);
             width: 260px;

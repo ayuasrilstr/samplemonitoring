@@ -211,17 +211,46 @@ table.dataTable td img {
                     <td><?= $u->number_sample ?></td>
                     <td><?= $u->quantity_sample ?></td>
                     <td><img src="<?= base_url('images/sample_photo/'.$u->image_path) ?>"></td>
-                    <td>
-                      <a href="<?= site_url('c_transaksi/detail_penerimaan/'.$u->id_penerimaan) ?>" class="btn btn-outline-success btn-sm" title="Detail">
-                        <i class="fa fa-eye"></i>
-                      </a>
-                      <a href="<?= site_url('c_transaksi/edit_penerimaan/'.$u->id_penerimaan) ?>" class="btn btn-outline-info btn-sm" title="Edit">
-                        <i class="fa fa-edit"></i>
-                      </a>
-                      <a href="<?= site_url('c_transaksi/hapus_penerimaan/'.$u->id_penerimaan) ?>" onclick="return confirm('Yakin hapus? <?= $u->report_no ?>')" class="btn btn-outline-danger btn-sm" title="Delete">
-                        <i class="fa fa-trash"></i>
-                      </a>
-                    </td>
+                  <td class="text-nowrap">
+
+    <!-- DETAIL -->
+    <a href="<?= site_url('c_transaksi/detail_penerimaan/'.$u->id_penerimaan) ?>"
+       class="btn btn-outline-success btn-sm">
+        <i class="fa fa-eye"></i>
+    </a>
+
+    <!-- EDIT -->
+    <a href="<?= site_url('c_transaksi/edit_penerimaan/'.$u->id_penerimaan) ?>"
+       class="btn btn-outline-info btn-sm">
+        <i class="fa fa-edit"></i>
+    </a>
+
+    <!-- DELETE (opsional: cuma kalau belum ada kualitas) -->
+    <?php if ($u->total_test == 0): ?>
+        <a href="<?= site_url('c_transaksi/hapus_penerimaan/'.$u->id_penerimaan) ?>"
+           onclick="return confirm('Yakin hapus? <?= $u->report_no ?>')"
+           class="btn btn-outline-danger btn-sm">
+            <i class="fa fa-trash"></i>
+        </a>
+    <?php endif; ?>
+
+    <!-- MULAI TEST / LIHAT PROSES -->
+    <?php if ($u->total_test == 0): ?>
+        <button hidden
+            class="btn btn-primary btn-sm btnMulaiTest"
+            data-id_penerimaan="<?= $u->id_penerimaan ?>"
+            data-report_no="<?= $u->report_no ?>">
+            <i class="fa fa-play"></i> Mulai Test
+        </button>
+    <?php else: ?>
+        <a href="<?= site_url('c_transaksi/detail_kualitas/'.$u->id_penerimaan) ?> disabled"
+           class="btn btn-success btn-sm">
+            <i class="fa fa-flask"></i> Proses QC
+        </a>
+    <?php endif; ?>
+
+</td>
+
                   </tr>
                   <?php } ?>
                 </tbody>

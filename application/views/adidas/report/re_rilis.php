@@ -130,20 +130,20 @@ $jenisReportMap = [
                                             <?php
                                                 $jenis = $row->jenis_report;
                                                 $id    = $row->id_penerimaan;
-                                                $no    = $row->new_report_no;
+                                                $report_no_final = $row->new_report_no; // ✅ jangan pakai $no lagi
 
                                                 $urlMap = [
-                                                    'fgt'   => "c_transaksi/fgt/$id/$no",
-                                                    'fgwt'  => "c_transaksi/fgwt/$id/$no",
-                                                    'ftr'   => "c_transaksi/ftr/$id/$no",
-                                                    'ftrf'  => "c_transaksi/ftrf/$id/$no",
-                                                    'ttr1'  => "c_transaksi/ttr1/$id/$no",
-                                                    'ttr2'  => "c_transaksi/ttr2/$id/$no",
-                                                    'swtr'  => "c_transaksi/swtr/$id/$no",
-                                                    'ptr'   => "c_transaksi/ptr/$id/$no",
-                                                    'str1'  => "c_transaksi/str1/$id/$no",
-                                                    'str2'  => "c_transaksi/str2/$id/$no",
-                                                    'phdanform' => "c_transaksi/phdanform/$id/$no"
+                                                    'fgt'   => "c_transaksi/fgt/$id/$report_no_final",
+                                                    'fgwt'  => "c_transaksi/fgwt/$id/$report_no_final",
+                                                    'ftr'   => "c_transaksi/ftr/$id/$report_no_final",
+                                                    'ftrf'  => "c_transaksi/ftrf/$id/$report_no_final",
+                                                    'ttr1'  => "c_transaksi/ttr1/$id/$report_no_final",
+                                                    'ttr2'  => "c_transaksi/ttr2/$id/$report_no_final",
+                                                    'swtr'  => "c_transaksi/swtr/$id/$report_no_final",
+                                                    'ptr'   => "c_transaksi/ptr/$id/$report_no_final",
+                                                    'str1'  => "c_transaksi/str1/$id/$report_no_final",
+                                                    'str2'  => "c_transaksi/str2/$id/$report_no_final",
+                                                    'phdanform' => "c_transaksi/phdanform/$id/$report_no_final"
                                                 ];
 
                                                 $url   = isset($urlMap[$jenis]) ? site_url($urlMap[$jenis]) : '#';
@@ -161,10 +161,11 @@ $jenisReportMap = [
                                         </td>
                                     </tr>
                                     <?php 
-                                        endforeach;
-                                    } 
+                                            endforeach;
+                                        } 
                                     ?>
-                                </tbody>
+                                    </tbody>
+
                             </table>
                         </div>
                     </div>
@@ -320,7 +321,31 @@ $jenisReportMap = [
                 </div>
             </div>
             <div class="card-body">
-                <div class="col-md-4">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label>Date Final of Test</label>
+                        <input type="date" class="form-control" name="date_final" required>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label>Test Pending</label>
+                    <input type="text" class="form-control" name="test_pending" required>
+                  </div>
+                </div>
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label>Personil</label>
+                    <input type="text" class="form-control" name="personil" value="<?php echo $this->session->userdata('bg_nama')?>" readonly>
+                  </div>
+                </div>
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label>Date Sending of Report</label>
+                    <input type="date" class="form-control" name="date_sending" required>
+                  </div>
+                </div>
+                <div class="col-md-2">
                     <div class="form-group">
                         <label>Jenis Report</label>
                         <select name="jenis_report" id="jenis_report" class="form-control select2" required>
@@ -339,31 +364,15 @@ $jenisReportMap = [
                         </select>
                     </div>
                 </div>
-               <!--div class="col-md-4">
+                <div class="col-md-2">
                     <div class="form-group">
-                        <label>Report No</label>
-                        <input type="text" name="report_no" id="report_no" class="form-control" value="<= new_report_no ?>" readonly>
-                        <input type="hidden" id="id_penerimaan" name="id_penerimaan" value="<= $id_penerimaan ?>">
-                    </div>
-                </div-->
-
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label>Report No</label>
-
-                        <!-- Pilihan -->
-                        <div>
-                            <label>
-                                <input type="radio" name="adding_type" value="adding" checked>
-                                Adding
-                            </label>
-                            &nbsp;&nbsp;
-                            <label>
-                                <input type="radio" name="adding_type" value="no_adding">
-                                No Adding
-                            </label>
+                       <div class="form-group">
+                            <label for="adding_type">Report No</label>
+                            <select name="adding_type" id="adding_type" class="form-control">
+                                <option value="adding" selected>Adding</option>
+                                <option value="no_adding">No Adding</option>
+                            </select>
                         </div>
-
                         <input type="hidden"
                             name="report_no"
                             id="report_no"
@@ -376,12 +385,11 @@ $jenisReportMap = [
                     </div>
                 </div>
 
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label>Date Sending Report</label>
-                        <input type="date" name="date_sending" id="date_sending" class="form-control">
-                    </div>
+                <div class="col-md-12">
+                    <hr> 
                 </div>
+              
+              
                 <div class="col-md-4">
                     <label>Signature</label>
                         <select name="signature" id="signature" class="form-control">
